@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="hardware_interface" default="EffortJointInterface" />
+    <arg name="robot_name" default="lwr"/>
+    <arg name="model" default="lwr"/>
+
+    <!-- Loads the Gazebo world. -->
+    <arg name="paused" default="false"/>
+    <arg name="use_sim_time" default="true"/>
+    <!-- <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/> -->
+    <arg name="gui" default="false"/>
+    <arg name="headless" default="true"/>
+    <arg name="debug" default="false"/>
+
+        <!-- <arg name="world_name" value="$(find single_lwr_robot)/worlds/lwr_soma_surface.world"/> -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="debug" value="$(arg debug)" />
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="headless" value="$(arg headless)"/>
+    </include>
+
+    <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find single_lwr_robot)/robot/single_lwr_robot.urdf.xacro' hardware_interface:=$(arg hardware_interface) robot_name:=$(arg robot_name)" />
+
+    <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model lwr -param robot_description -J lwr_a3_joint 1.57"/>
+
+    <!-- Spawn controllers -->
+    <group ns="$(arg robot_name)">
+        <!-- Loads joint controller configurations from YAML file to parameter server -->
+        <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
+
+        <!-- Loads the controllers -->
+        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller lwr_control" />
+
+        <!-- Converts joint states to TF transforms for rviz, etc -->
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+            <remap from="joint_states" to="/$(arg robot_name)/joint_states" />
+        </node>
+    </group>
+
+    <!-- IK -->
+    <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/>
+
+    <!-- Static Transform Publisher to connect EXOTica tree -->
+    <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
+
+    <!-- RViz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/>
+
+    <!-- Dynamic Reconfigure -->
+    <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/>
+</launch>
