@@ -1,0 +1,4 @@
+<launch>
+  <!-- push table_description to factory and spawn robot in gazebo -->
+  <node name="spawn_box" pkg="gazebo" type="spawn_model" args="-sdf -f /opt/ros/melodic/share/gazebo_worlds/models/box/model.sdf  -z 0.05 -model box" respawn="false" output="screen" />
+</launch>
