@@ -136,6 +136,9 @@ struct PassiveController
 
     Vector6d tmp_Xmax = Vector6d::Zero();
     double Wmax_scale = 1.0;
+    // Original variables
+    Vector6d Wmax_init_;
+    Vector6d K0_init_;
 
     realtime_tools::RealtimeBuffer<Vector6d> target_pose;
     // Vector6d target_pose;
@@ -144,10 +147,6 @@ struct PassiveController
 private:
     Vector6d F_;
     Vector6d xmax_;
-
-    // Original variables
-    Vector6d Wmax_init_;
-    Vector6d K0_init_;
 };
 
 class StackOfPassiveControllersController
@@ -256,7 +255,11 @@ public:
             // ddr_->registerVariable<double>(link_name + "/Wmax_scale", &new_passive_controller.Wmax_scale, link_name + "/Wmax_scale (for Wmax and K0)");
 
             // awesomebytes (& ANYbotics)
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name, 0, link_name + "/Wmax_scale (for Wmax and K0)", 1, 0, 100));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_scale", 0, link_name + "/Wmax_scale (for Wmax and K0)", 1, 0, 100));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_trans", 0, link_name + "/Wmax_trans", parsed_values["Wmax"](0), 0, 1000));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 1000));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 100));
         }
 
         // Initialise real-time thread-safe buffers
@@ -379,11 +382,14 @@ protected:
     // ddynamic_reconfigure callback
     static void ddrCB(const ddynamic_reconfigure::DDMap& map, int, StackOfPassiveControllersController* obj)
     {
-        HIGHLIGHT("Reconfigure request...")
         for (auto& passive_controller : obj->passive_controllers_)
         {
-            passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name).c_str()).toDouble();
-            ROS_WARN_STREAM("Updated " << passive_controller.link_name << " scale to " << passive_controller.Wmax_scale);
+            passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
+
+            passive_controller.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
+            passive_controller.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
+            passive_controller.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
+            passive_controller.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
         }
     }
 
