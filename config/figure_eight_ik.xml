@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <IKSolverDemoConfig>
   <IKSolver Name="MySolver">
-    <MaxIterations>10</MaxIterations>
+    <MaxIterations>1</MaxIterations>
   </IKSolver>
 
   <UnconstrainedEndPoseProblem Name="MyProblem">
