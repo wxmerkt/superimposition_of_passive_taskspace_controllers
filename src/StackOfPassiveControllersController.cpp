@@ -150,7 +150,7 @@ struct PassiveController
     Vector6d Wmax_init_;
     Vector6d K0_init_;
 
-    realtime_tools::RealtimeBuffer<Vector6d> target_pose;
+    realtime_tools::RealtimeBuffer<KDL::Frame> target_pose;
     // Vector6d target_pose;
     Vector6d current_pose;
 
@@ -295,11 +295,16 @@ public:
             if (new_passive_controller.base_for_orientation_control) ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/OrientationScale", 0, link_name + "/OrientationScale (relative to position)", 0.2, 0, 5));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_scale", 0, link_name + "/Wmax_scale (for Wmax and K0)", 1, 0, 100));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_trans", 0, link_name + "/Wmax_trans", parsed_values["Wmax"](0), 0, 1000));
-            // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 1000));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_trans", 0, link_name + "/Err0_trans", parsed_values["Err0"](0), 0, 0.2));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_trans", 0, link_name + "/Errb_trans", parsed_values["Errb"](0), 0, 0.2));
-            // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 100));
+            if (!orientation_control)
+            {
+                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
+                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 100));
+                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
+                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
+            }
         }
 
         // Initialise real-time thread-safe buffers
@@ -360,11 +365,15 @@ public:
             if (passive_controller.orientation_scale == 0.0) continue;
 
             // Get current link positions
-            Vector6d current_link_position = exotica::GetFrameAsVector(scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()), exotica::RotationType::RPY);
+            KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
             Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
 
             // Compute error
-            Vector6d error = *passive_controller.target_pose.readFromRT() - current_link_position;
+            KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
+            KDL::Twist error_twist = KDL::diff(current_link_position, target_pose);
+            Vector6d error;
+            error.head<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.vel.data);
+            error.tail<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.rot.data);
             Vector6d dX = current_link_jacobian * qdot;
 
             auto FIC = passive_controller.FractalImpedanceControl(passive_controller.tmp_Xmax, dX, error);
@@ -425,9 +434,7 @@ protected:
             passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
 
             passive_controller.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
-            // passive_controller.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
             passive_controller.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
-            // passive_controller.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
 
             passive_controller.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
             passive_controller.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
@@ -454,6 +461,13 @@ protected:
                     }
                 }
             }
+            else
+            {
+                passive_controller.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
+                passive_controller.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
+                passive_controller.Err0.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_rot").c_str()).toDouble());
+                passive_controller.Errb.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_rot").c_str()).toDouble());
+            }
         }
     }
 
@@ -468,7 +482,7 @@ protected:
         // HIGHLIGHT_NAMED("UpdateTargetPosesInPassiveControllers", q_tmp.transpose())
         for (auto& passive_controller : passive_controllers_)
         {
-            Vector6d tmp = exotica::GetFrameAsVector(scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()), exotica::RotationType::RPY);
+            KDL::Frame tmp = scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
             // ROS_INFO_STREAM("Updating " << passive_controller.link_name << " to " << tmp.transpose());
             passive_controller.target_pose.writeFromNonRT(tmp);
             // passive_controller.target_pose = tmp;
