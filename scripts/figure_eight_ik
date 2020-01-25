@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import pyexotica as exo
-from numpy import array
+import numpy as np
 import math
 from pyexotica.publish_trajectory import *
 from std_msgs.msg import Float64MultiArray
@@ -15,10 +15,15 @@ rospy.init_node("figure_eight_ik")
 
 js_map = None
 def joint_states_data_cb(data):
+    global js_map
     js_map = dict(zip(data.name, data.position))
 
 def figure_eight(t):
-    return array([0.6, -0.1 + math.sin(t * 2.0 * math.pi * 0.5) * 0.1, 0.5 + math.sin(t * math.pi * 0.5) * 0.2, 0, 0, 0])
+    target_pose = np.array([0.6, -0.1 + math.sin(t * 2.0 * math.pi * 0.5) * 0.1, 0.5 + math.sin(t * math.pi * 0.5) * 0.2, 0, 0, 0])
+    target_frame = exo.KDLFrame(target_pose)
+    offset_frame = exo.KDLFrame([0,0,0,0,0,-1.57])
+    new_frame = offset_frame * target_frame
+    return np.asarray(new_frame.get_translation_and_rpy())
 
 window = tk.Tk()
 window.title("Target Speed Scale")
@@ -34,16 +39,20 @@ print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())
 pub = rospy.Publisher("/lwr/ik_command", Float64MultiArray, queue_size=1)
 sub = rospy.Subscriber("/lwr/joint_states", JointState, joint_states_data_cb)
 
+# Wait for joint states to be populated
+while js_map is None:
+    sleep(0.1)
+
 dt = 0.005
 t = 0.0
-q = array([0.0] * 14)
+q = np.array([0.0] * 14)
 print('Publishing IK')
 signal.signal(signal.SIGINT, sig_int_handler)
 while True:
     try:
         problem.set_goal('Position', figure_eight(t))
         if js_map is not None:
-            problem.set_model_state_map(js_map)
+            problem.get_scene().set_model_state_map(js_map)
         else:
             problem.start_state = q
         s = time()
