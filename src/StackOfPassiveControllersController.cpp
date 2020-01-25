@@ -346,7 +346,16 @@ public:
 
         // awesomebytes (& ANYbotics) / RealSense
         // ddr_->start(&StackOfPassiveControllersController::ddrCB, this);
-        ddr_->start(boost::bind(ddrCB, _1, _2, this));
+        if (!first_start_done_)
+        {
+            first_start_done_ = true;
+            ddr_->start(boost::bind(ddrCB, _1, _2, this));
+        }
+    }
+
+    void stopping(const ros::Time& time)
+    {
+        ROS_WARN_STREAM("Stopping controller.");
     }
 
     void update(const ros::Time& /*time*/, const ros::Duration& /*period*/)
@@ -399,6 +408,7 @@ public:
     }
 
 protected:
+    bool first_start_done_ = false;
     std::vector<std::string> joint_names_;
     std::vector<hardware_interface::JointHandle> joints_;
     std::size_t n_joints_;
