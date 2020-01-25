@@ -308,10 +308,10 @@ public:
         }
 
         // Initialise real-time thread-safe buffers
-        std::vector<double> q(n_joints_);
+        std::map<std::string, double> q;
         for (std::size_t i = 0; i < n_joints_; ++i)
         {
-            q[i] = joints_[i].getPosition();
+            q[joints_[i].getName()] = joints_[i].getPosition();
         }
         UpdateTargetPosesInPassiveControllers(q);
 
@@ -326,12 +326,14 @@ public:
 
     void starting(const ros::Time& time)
     {
-        std::vector<double> q_current(n_joints_);
+        std::map<std::string, double> q_current;
         for (std::size_t i = 0; i < n_joints_; ++i)
         {
-            q_current[i] = joints_[i].getPosition();
+            q_current[joints_[i].getName()] = joints_[i].getPosition();
+
+            joints_[i].setCommand(joints_[i].getEffort());
         }
-        q_current[3] = 1.57;
+        // q_current[3] = 1.57;
         UpdateTargetPosesInPassiveControllers(q_current);
         ROS_INFO_STREAM("Controller starting.");
 
@@ -418,7 +420,7 @@ protected:
         // Positions
         if (msg->data.size() == n_joints_)
         {
-            UpdateTargetPosesInPassiveControllers(msg->data);
+            // UpdateTargetPosesInPassiveControllers(msg->data);
         }
         else
         {
@@ -472,12 +474,12 @@ protected:
     }
 
     // Method to update all targets from a joint configuration
-    void UpdateTargetPosesInPassiveControllers(const std::vector<double>& q)
+    void UpdateTargetPosesInPassiveControllers(const std::map<std::string, double>& q)
     {
-        std::map<std::string, double> q_exotica;
-        for (std::size_t i = 0; i < n_joints_; ++i)
-            q_exotica[joint_names_[i]] = q[i];
-        scene_subscriber_->GetKinematicTree().SetModelState(q_exotica);
+        // std::map<std::string, double> q_exotica;
+        // for (std::size_t i = 0; i < n_joints_; ++i)
+        //     q_exotica[joint_names_[i]] = q[i];
+        scene_subscriber_->GetKinematicTree().SetModelState(q);
         // auto q_tmp = Eigen::Map<const Eigen::VectorXd>(q.data(), q.size());
         // HIGHLIGHT_NAMED("UpdateTargetPosesInPassiveControllers", q_tmp.transpose())
         for (auto& passive_controller : passive_controllers_)
