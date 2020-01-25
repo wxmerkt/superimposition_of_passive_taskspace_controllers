@@ -29,8 +29,9 @@ exo.Setup.init_ros()
 solver = exo.Setup.load_solver(
     '{stack_of_passive_controllers_controller}/config/figure_eight_ik.xml')
 problem = solver.get_problem()
+print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())
 
-pub = rospy.Publisher("/lwr/lwr_control/command", Float64MultiArray, queue_size=1)
+pub = rospy.Publisher("/lwr/ik_command", Float64MultiArray, queue_size=1)
 sub = rospy.Subscriber("/lwr/joint_states", JointState, joint_states_data_cb)
 
 dt = 0.005

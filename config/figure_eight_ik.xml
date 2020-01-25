@@ -8,7 +8,7 @@
 
     <PlanningScene>
       <Scene>
-        <!-- <JointGroup>arm</JointGroup> -->
+        <JointGroup>arm</JointGroup>
         <!-- <URDF>{exotica_examples}/resources/robots/lwr_simplified.urdf</URDF> -->
         <!-- <SRDF>{exotica_examples}/resources/robots/lwr_simplified.srdf</SRDF> -->
       </Scene>
@@ -28,8 +28,8 @@
     </Cost>
 
     <!-- <StartState>0 0 0 0 0 0 0</StartState> -->
-    <!-- <NominalState>0 0 0 0 0 0 0</NominalState> -->
-    <W> 7 6 5 4 3 2 1 1 2 3 4 5 6 7 </W>
+    <NominalState>0 0 1.57 0 0 0 0</NominalState>
+    <W>7 6 5 4 3 2 1</W>
   </UnconstrainedEndPoseProblem>
 
 </IKSolverDemoConfig>

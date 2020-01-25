@@ -2,7 +2,18 @@ joint_state_controller:
   type: joint_state_controller/JointStateController
   publish_rate: 100
 
-lwr_control:
+position_controller:
+  type: position_controllers/JointGroupPositionController
+  joints:
+    - lwr_a1_joint
+    - lwr_a2_joint
+    - lwr_e1_joint
+    - lwr_a3_joint
+    - lwr_a4_joint
+    - lwr_a5_joint
+    - lwr_a6_joint
+
+stack_of_fic:
   type: stack_of_passive_controllers_controller/StackOfPassiveControllersController
   joints:
     - lwr_a1_joint

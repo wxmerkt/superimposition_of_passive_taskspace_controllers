@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="robot_name" default="lwr"/>
+
+    <!-- Load the URDF into the ROS Parameter Server -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find single_lwr_robot)/robot/single_lwr_robot.urdf.xacro' robot_name:=$(arg robot_name)" />
+    <param name="robot_description_semantic" textfile="$(find stack_of_passive_controllers_controller)/config/lwr.srdf" />
+</launch>
