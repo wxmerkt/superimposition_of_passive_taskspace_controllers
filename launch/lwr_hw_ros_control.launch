@@ -1,0 +1,67 @@
+<launch>
+	<!-- set the parameters for the real interface -->
+	<arg name="port" default="49939"/>
+	<arg name="ip" default="192.168.1.1"/>
+	<!-- 192.168.0.10 -->
+	<arg name="file" default="$(find single_lwr_robot)/config/980241-FRI-Driver.init"/>
+
+	<arg name="controllers" default="position_controller"/>
+	<arg name="stopped_controllers" default="stack_of_fic"/>
+
+	<!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
+    <include file="$(find stack_of_passive_controllers_controller)/launch/load_lwr_robot_description.launch"/>
+
+	<!-- joint and robot state publishers of the full robot description -->
+	<!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+		<rosparam param="source_list">[/lwr/joint_states]</rosparam>
+	</node>
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+
+	<!-- load robotHW configurations to rosparam server -->
+	<rosparam command="load" file="$(find single_lwr_robot)/config/hw_interface.yaml"/>
+
+	<!-- real robot and controllers -->
+	<group ns="lwr">
+		<!--add a copy of the robot description within the name space -->
+		<param name="robot_description" command="$(find xacro)/xacro $(find single_lwr_robot)/robot/single_lwr_robot.urdf.xacro"/>
+
+		<include file="$(find lwr_hw)/launch/lwr_hw.launch">
+			<arg name="port" value="$(arg port)"/>
+			<arg name="ip" value="$(arg ip)"/>
+			<arg name="file_with_path" value="$(arg file)"/>
+			<!-- this name MUST match the name you give to the arm in the URDF instance -->
+			<!-- to minimize errors, you could pass it as a xacro parameter -->
+			<arg name="name" value="lwr"/>
+		</include>
+
+		<!-- Loads joint controller configurations from YAML file to parameter server -->
+        <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
+
+        <!-- Converts joint states to TF transforms for rviz, etc -->
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+            <remap from="joint_states" to="/lwr/joint_states" />
+        </node>
+
+		<!-- spawn only desired controllers in current namespace -->
+		<node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller $(arg controllers)  "/>
+
+		<node name="controller_stopper" pkg="controller_manager" type="spawner" args="--stopped $(arg stopped_controllers)  " />
+	</group>
+
+	<!-- IK -->
+    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/> -->
+    <!-- <node name="ik_relay" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/stack_of_fic/command"/> -->
+    <!-- <node name="ik_relay_2" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/position_controller/command"/> -->
+
+    <!-- Static Transform Publisher to connect EXOTica tree -->
+    <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
+
+    <!-- RViz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/>
+
+    <!-- Dynamic Reconfigure -->
+    <!-- <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/> -->
+
+    <!-- rqt controller manager -->
+    <!-- <node type="rqt_controller_manager" pkg="rqt_controller_manager" name="rqt_controller_manager"/> -->
+</launch>

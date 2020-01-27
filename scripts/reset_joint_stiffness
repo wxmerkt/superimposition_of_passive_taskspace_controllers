@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+# license removed for brevity
+import rospy
+import math
+from ipab_lwr_msgs.msg import FriState
+from ipab_lwr_msgs.msg import FriCommandJointStiffness
+
+def callback(data):
+    global pos
+    global effz
+    pos=data.jointPosition
+    effz=data.cartPose.position.z
+
+def talker():
+    global pos
+    global effz
+    rospy.Subscriber("/kuka_lwr_state", FriState, callback)
+    rospy.init_node('LWRGravityCompensation', anonymous=True)
+    pub = rospy.Publisher('/lwr/commandJointStiffness', FriCommandJointStiffness, queue_size=10)
+    rospy.loginfo("Starting LWR gravity compensation node")
+    r = rospy.Rate(50) # 100hz
+    msg=FriCommandJointStiffness()
+    t=0.0
+    msg.jointPosition=pos
+    msg.jointStiffness=tuple([100,200,100,200,100,100,100])
+    msg.jointDamping=tuple([0.1,0.1,0.1,0.1,0.1,0.1,0.1])
+    #msg.jointTorque=tuple([0,0.4,0,-1.7,0,0,-0.5])
+    msg.jointTorque=tuple([0,0.0,0,0.0,0,0,0.0])
+    while not rospy.is_shutdown():
+      msg.header.stamp=rospy.get_rostime()
+      pub.publish(msg)
+      t=t+0.01
+      if t>.05:
+        break
+      r.sleep()
+    t=0.0  
+    while not rospy.is_shutdown():
+        msg.header.stamp=rospy.get_rostime()
+        if effz>0.3:
+          msg.jointPosition=pos
+        pub.publish(msg)
+        t=t+0.01
+        r.sleep()
+
+if __name__ == '__main__':
+    try:
+        pos=tuple([0.0, -0.052, 0.0, 1.52, 0.0, -0.96, 0.0])
+        effz=100.0
+        talker()
+    except rospy.ROSInterruptException: pass

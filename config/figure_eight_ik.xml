@@ -1,8 +1,9 @@
 <?xml version="1.0" ?>
 <IKSolverDemoConfig>
-  <IKSolver Name="MySolver">
+  <!-- <IKSolver Name="MySolver">
     <MaxIterations>1</MaxIterations>
-  </IKSolver>
+  </IKSolver> -->
+  <BayesianIKSolver Name="MySolver"/>
 
   <UnconstrainedEndPoseProblem Name="MyProblem">
 
@@ -15,16 +16,18 @@
     </PlanningScene>
     
     <Maps>
+      <JointLimit Name="JL"/>
       <EffFrame Name="Position">
         <EndEffector>
-            <!-- <Frame Link="lwr_arm_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/> -->
-            <Frame Link="lwr_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/>
+            <Frame Link="lwr_arm_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/>
+            <!-- <Frame Link="lwr_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/> -->
         </EndEffector>
       </EffFrame>
     </Maps>
 
     <Cost>
-      <Task Task="Position"/>
+      <Task Task="JL" Rho="2e3"/>
+      <Task Task="Position" Rho="1e3"/>
     </Cost>
 
     <!-- <StartState>0 0 0 0 0 0 0</StartState> -->

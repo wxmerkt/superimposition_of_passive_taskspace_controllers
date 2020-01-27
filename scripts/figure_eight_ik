@@ -13,9 +13,14 @@ import Tkinter as tk
 
 rospy.init_node("figure_eight_ik")
 
+joints = ['lwr_a1_joint', 'lwr_a2_joint', 'lwr_e1_joint', 'lwr_a3_joint', 'lwr_a4_joint', 'lwr_a5_joint', 'lwr_a6_joint']
 js_map = None
+js_msg = None
+js_q = None
 def joint_states_data_cb(data):
-    global js_map
+    global js_map, js_q, js_msg
+    js_msg = data
+    js_q = data.position #[data.position[data.name.index(joint)] for joint in joints]
     js_map = dict(zip(data.name, data.position))
 
 def figure_eight(t):
@@ -36,25 +41,30 @@ solver = exo.Setup.load_solver(
 problem = solver.get_problem()
 print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())
 
-pub = rospy.Publisher("/lwr/ik_command", Float64MultiArray, queue_size=1)
-sub = rospy.Subscriber("/lwr/joint_states", JointState, joint_states_data_cb)
+pub = rospy.Publisher("/command", Float64MultiArray, queue_size=1)
+sub = rospy.Subscriber("/joint_states", JointState, joint_states_data_cb)
 
 # Wait for joint states to be populated
 while js_map is None:
     sleep(0.1)
 
-dt = 0.005
+problem.set_goal('Position', figure_eight(0.0))
+solver.max_iterations = 100
+q = solver.solve()[0]
+solver.max_iterations = 5
+
+dt = 0.01
 t = 0.0
-q = np.array([0.0] * 14)
 print('Publishing IK')
 signal.signal(signal.SIGINT, sig_int_handler)
 while True:
     try:
         problem.set_goal('Position', figure_eight(t))
-        if js_map is not None:
-            problem.get_scene().set_model_state_map(js_map)
-        else:
-            problem.start_state = q
+        # if js_map is not None:
+        #     problem.update(js_q)
+        #     # problem.get_scene().set_model_state_map(js_map)
+        # else:
+        problem.start_state = q
         s = time()
         q = solver.solve()[0]
         publish_pose(q, problem)
@@ -64,6 +74,7 @@ while True:
         e = time()
         if e - s < dt:
             sleep(dt - (e-s))
+        # print(solver.get_planning_time())
         window.update()
         speed_scaling = w1.get()
         t = t + (dt * speed_scaling)
