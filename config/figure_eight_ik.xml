@@ -17,22 +17,31 @@
     
     <Maps>
       <JointLimit Name="JL"/>
-      <EffFrame Name="Position">
+      <!-- <EffAxisAlignment Name="AxisAlignment">
         <EndEffector>
             <Frame Link="lwr_arm_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/>
+        </EndEffector>
+      </EffAxisAlignment> -->
+      <EffFrame Name="Position">
+        <EndEffector>
+            <!-- <Frame Link="lwr_arm_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/> -->
+            <Frame Link="lwr_arm_7_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 0"/>
             <!-- <Frame Link="lwr_6_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 4.3297802811774664e-17"/> -->
         </EndEffector>
       </EffFrame>
+      <JointPose Name="Identity"/>
     </Maps>
 
     <Cost>
       <Task Task="JL" Rho="2e3"/>
       <Task Task="Position" Rho="1e3"/>
+      <Task Task="Identity" Rho="1"/>
+      <!-- <Task Task="AxisAlignment" Rho="1e3"/> -->
     </Cost>
 
     <!-- <StartState>0 0 0 0 0 0 0</StartState> -->
-    <NominalState>0 0 1.57 0 0 0 0</NominalState>
-    <W>7 6 5 4 3 2 1</W>
+    <!-- <NominalState>0 0 1.57 0 0 0 0</NominalState> -->
+    <!-- <W>7 6 5 4 3 2 1</W> -->
   </UnconstrainedEndPoseProblem>
 
 </IKSolverDemoConfig>

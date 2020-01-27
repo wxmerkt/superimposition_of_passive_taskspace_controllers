@@ -18,11 +18,11 @@ def talker():
     rospy.init_node('LWRGravityCompensation', anonymous=True)
     pub = rospy.Publisher('/lwr/commandJointStiffness', FriCommandJointStiffness, queue_size=10)
     rospy.loginfo("Starting LWR gravity compensation node")
-    r = rospy.Rate(50) # 100hz
+    r = rospy.Rate(50)
     msg=FriCommandJointStiffness()
     t=0.0
     msg.jointPosition=pos
-    msg.jointStiffness=tuple([100,200,100,200,100,100,100])
+    msg.jointStiffness=tuple([700,200,700,200,700,700,700])
     msg.jointDamping=tuple([0.1,0.1,0.1,0.1,0.1,0.1,0.1])
     #msg.jointTorque=tuple([0,0.4,0,-1.7,0,0,-0.5])
     msg.jointTorque=tuple([0,0.0,0,0.0,0,0,0.0])
@@ -33,7 +33,7 @@ def talker():
       if t>.05:
         break
       r.sleep()
-    t=0.0  
+    t=0.0
     while not rospy.is_shutdown():
         msg.header.stamp=rospy.get_rostime()
         if effz>0.3:

@@ -59,23 +59,11 @@ q_to_reach = q[:7]
 print("q_target", q_to_reach)
 print("joint limits", problem.get_scene().get_kinematic_tree().get_joint_limits())
 
-# for _ in range(10):
-#     msg = Float64MultiArray()
-#     msg.data = js_q
-#     pub.publish(msg)
-
-# msg = FriCommandJointPosition()
-# # msg.header.stamp = rospy.Duration(10.)#rospy.Time.now() + rospy.Duration(10.)
-# msg.jointPosition = q_to_reach
-# pub.publish(msg)
-# sleep(1)
-# exit()
-
-steps = 100
-dt = 0.1
+steps = 10
+dt = 1.
+np.set_printoptions(2,suppress=True)
+diff = np.array(q_to_reach)-np.array(js_q)
 for step in tqdm(range(steps)):
-    np.set_printoptions(2,suppress=True)
-    diff = np.array(q_to_reach)-np.array(js_q)
     q_cmd = np.array(js_q) + (step+1)/steps * diff
     
     msg = FriCommandJointPosition()
@@ -90,7 +78,6 @@ for step in tqdm(range(steps)):
     sleep(dt)
 
 msg = FriCommandJointPosition()
-# msg.header.stamp = rospy.Duration(10.)#rospy.Time.now() + rospy.Duration(10.)
 msg.jointPosition = q_to_reach
 pub.publish(msg)
 
