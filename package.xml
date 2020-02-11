@@ -30,6 +30,8 @@
   <depend>std_msgs</depend>
   <depend>urdf</depend>
 
+  <depend>ipab_lwr_msgs</depend>
+
   <export>
     <controller_interface plugin="${prefix}/StackOfPassiveControllersController.xml"/>
   </export>

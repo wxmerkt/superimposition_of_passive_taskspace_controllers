@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+from controller_manager_msgs.srv import SwitchController
+from time import sleep
+import rospy
+
+rospy.init_node("switch_controller_node")
+sleep(0.5)
+
+rospy.wait_for_service('/lwr/controller_manager/switch_controller')
+try:
+    switch_controller = rospy.ServiceProxy(
+        '/lwr/controller_manager/switch_controller', SwitchController)
+    ret = switch_controller(['stack_of_fic'],
+                            ['position_controller'], 2)
+    print(ret)
+except rospy.ServiceException, e:
+    print("Service call failed: %s" % e)

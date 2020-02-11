@@ -2,7 +2,6 @@
 <launch>
     <arg name="hardware_interface" default="EffortJointInterface" />
     <arg name="robot_name" default="lwr"/>
-    <arg name="model" default="lwr"/>
 
     <!-- Loads the Gazebo world. -->
     <arg name="paused" default="false"/>
@@ -23,7 +22,7 @@
     </include>
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <param name="robot_description" command="$(find xacro)/xacro '$(find single_lwr_robot)/robot/single_lwr_robot.urdf.xacro' hardware_interface:=$(arg hardware_interface) robot_name:=$(arg robot_name)" />
+    <include file="$(find stack_of_passive_controllers_controller)/launch/load_lwr_robot_description.launch"/>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
     <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model lwr -param robot_description -J lwr_a3_joint 1.57"/>
@@ -34,7 +33,10 @@
         <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
 
         <!-- Loads the controllers -->
-        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller lwr_control" />
+        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller position_controller" />
+
+        <!-- Loads the Stack of FIC controller (stopped) -->
+        <node name="controller_spawner_stopped" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped stack_of_fic" />
 
         <!-- Converts joint states to TF transforms for rviz, etc -->
         <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
@@ -44,6 +46,8 @@
 
     <!-- IK -->
     <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/>
+    <node name="ik_relay" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/stack_of_fic/command"/>
+    <!-- <node name="ik_relay_2" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/position_controller/command"/> -->
 
     <!-- Static Transform Publisher to connect EXOTica tree -->
     <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
@@ -53,4 +57,7 @@
 
     <!-- Dynamic Reconfigure -->
     <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/>
+
+    <!-- rqt controller manager -->
+    <node type="rqt_controller_manager" pkg="rqt_controller_manager" name="rqt_controller_manager"/>
 </launch>

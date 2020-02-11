@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Spawn controllers -->
+    <!-- <group ns="lwr"> -->
+        <!-- Loads the controllers -->
+        <include file="$(find stack_of_passive_controllers_controller)/launch/load_lwr_robot_description.launch"/>
+        <rosparam file="$(find stack_of_passive_controllers_controller)/config/fic_node.yaml" command="load" />
+        <node name="fic_node" pkg="stack_of_passive_controllers_controller" type="fic_node" respawn="false" output="screen">
+        </node>
+    <!-- </group> -->
+</launch>

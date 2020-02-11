@@ -1,0 +1,14 @@
+<launch>
+    <!-- IK -->
+    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/> -->
+    <!-- <node name="ik_relay" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/stack_of_fic/command"/> -->
+    <!-- <node name="ik_relay_2" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/position_controller/command"/> -->
+
+    <!-- Static Transform Publisher to connect EXOTica tree -->
+    <node name="robot_state_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
+    <node name="robot_state_to_exotica_static_transform_2" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame table"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="rob_st_pub__" />
+
+    <!-- RViz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/>
+</launch>

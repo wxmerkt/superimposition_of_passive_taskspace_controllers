@@ -3,6 +3,7 @@ project(stack_of_passive_controllers_controller)
 
 set(CATKIN_DEPENDENCIES
   controller_interface
+  control_toolbox
   hardware_interface
   pluginlib
   realtime_tools
@@ -11,6 +12,8 @@ set(CATKIN_DEPENDENCIES
   urdf
   exotica_core
   ddynamic_reconfigure
+
+  ipab_lwr_msgs
 )
 
 find_package(catkin REQUIRED COMPONENTS ${CATKIN_DEPENDENCIES})
@@ -33,6 +36,13 @@ add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PUBLIC -std=c++14 -Wall)
+
+add_executable(fic_node src/stack_of_fic_node.cpp)
+add_dependencies(fic_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(fic_node ${catkin_LIBRARIES})
+target_include_directories(fic_node PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
+target_compile_options(fic_node PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
+
 
 #############
 ## Install ##

@@ -2,7 +2,29 @@ joint_state_controller:
   type: joint_state_controller/JointStateController
   publish_rate: 100
 
-lwr_control:
+position_controller:
+  type: position_controllers/JointGroupPositionController
+  joints:
+    - lwr_a1_joint
+    - lwr_a2_joint
+    - lwr_e1_joint
+    - lwr_a3_joint
+    - lwr_a4_joint
+    - lwr_a5_joint
+    - lwr_a6_joint
+
+# position_controller:
+#   type: position_controllers/JointTrajectoryController
+#   joints: 
+#     - lwr_a1_joint
+#     - lwr_a2_joint
+#     - lwr_e1_joint
+#     - lwr_a3_joint
+#     - lwr_a4_joint
+#     - lwr_a5_joint
+#     - lwr_a6_joint
+
+stack_of_fic:
   type: stack_of_passive_controllers_controller/StackOfPassiveControllersController
   joints:
     - lwr_a1_joint
@@ -13,11 +35,11 @@ lwr_control:
     - lwr_a5_joint
     - lwr_a6_joint
   passive_controllers:
-    lwr_3_link:
-      Wmax: [10., 10., 10., 0., 0., 0.]
-      Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
-      Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
-      K0: [10., 10., 10., 0., 0., 0.]
+    # lwr_3_link:
+    #   Wmax: [10., 10., 10., 0., 0., 0.]
+    #   Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+    #   Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
+    #   K0: [10., 10., 10., 0., 0., 0.]
     # This is using the new orientation formulation with 3 extra points.
     # lwr_6_link:
     #   # Wmax: [5000., 5000., 5000., 25., 25., 25.]

@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+from __future__ import print_function, division
+
+from std_msgs.msg import Float64MultiArray
+from sensor_msgs.msg import JointState
+import rospy
+from time import sleep, time
+import signal
+
+rospy.init_node("send_current_as_goal")
+
+# joints = ['lwr_a1_joint', 'lwr_a2_joint', 'lwr_e1_joint', 'lwr_a3_joint', 'lwr_a4_joint', 'lwr_a5_joint', 'lwr_a6_joint']
+js_map = None
+js_q = None
+def joint_states_data_cb(data):
+    global js_map, js_q
+    js_q = data.position #[data.position[data.name.index(joint)] for joint in joints]
+    js_map = dict(zip(data.name, data.position))
+
+pub1 = rospy.Publisher("/lwr/position_controller/command", Float64MultiArray, queue_size=1)
+pub2 = rospy.Publisher("/command", Float64MultiArray, queue_size=1)
+sub = rospy.Subscriber("/joint_states", JointState, joint_states_data_cb)
+
+while js_map is None:
+    sleep(0.1)
+
+sleep(1)
+msg = Float64MultiArray()
+msg.data = js_q
+print(msg.data)
+for _ in range(10):
+    # msg.data[0] += 0.01
+    # print(msg.data)
+    pub1.publish(msg)
+    pub2.publish(msg)
+    sleep(0.1)
+sleep(1)
+print("Done")

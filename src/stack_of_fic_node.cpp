@@ -1,27 +1,27 @@
-// Copyright 2019 Wolfgang Merkt
+// Copyright 2020 Wolfgang Merkt
 
 #include <string>
 #include <vector>
 
 #include <Eigen/Dense>
 
-// #include <angles/angles.h>
-#include <controller_interface/controller.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <ddynamic_reconfigure/param/dd_all_params.h>
-#include <hardware_interface/joint_command_interface.h>
-#include <pluginlib/class_list_macros.h>
 #include <realtime_tools/realtime_buffer.h>
 // #include <realtime_tools/realtime_publisher.h>
+#include <control_toolbox/filters.h>
 #include <ros/node_handle.h>
+#include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <urdf/model.h>
 
+#include <ipab_lwr_msgs/FriCommandJointStiffness.h>
+#include <ipab_lwr_msgs/FriCommandMode.h>
+#include <sensor_msgs/JointState.h>
+
 #include <exotica_core/exotica_core.h>
 
-// #include <joint_limits_interface/joint_limits.h>
-// #include <joint_limits_interface/joint_limits_urdf.h>
-// #include <joint_limits_interface/joint_limits_rosparam.h>
+// #include "1euro_filter.hpp"
 
 inline double clamp(double x, double lower, double upper)
 {
@@ -37,6 +37,33 @@ inline double sign(double x)
     else
         return -1.0;
 }
+
+struct MovingAverageFilter
+{
+    MovingAverageFilter() {}
+    MovingAverageFilter(std::size_t dimension, std::size_t num_history) : history(Eigen::MatrixXd::Zero(dimension, num_history)), init_(true) {}
+    Eigen::VectorXd filter(const Eigen::VectorXd& val)
+    {
+        if (!init_)
+        {
+            ROS_ERROR_STREAM("Filter not initialized!!!");
+            return val;
+        }
+        // Shift history left
+        for (int i = history.cols() - 1; i > 0; --i)
+        {
+            history.col(i - 1) = history.col(i);
+        }
+        // Add new value to right-most column
+        history.col(history.cols() - 1) = val;
+
+        // Compute average and return
+        return history.rowwise().mean();
+    }
+
+    Eigen::MatrixXd history;
+    bool init_ = false;
+};
 
 namespace stack_of_passive_controllers_controller
 {
@@ -77,7 +104,8 @@ struct PassiveController
             constexpr double capacitor_charge = 20.;
             const double b = (Errb(i) - Err0(i)) / capacitor_charge;
 
-            if (sign(Err(i)) == -sign(dX(i)) || dX(i) == 0.)
+            constexpr double cartesian_velocity_tolerance = 1e-2;
+            if (sign(Err(i)) == -sign(dX(i)) || std::abs(dX(i)) == cartesian_velocity_tolerance)
             {
                 xmax_(i) = Err(i);
                 if (std::abs(Err(i)) < Err0(i))
@@ -114,15 +142,19 @@ struct PassiveController
                     U = 0.5 * K0(i) * xmax_(i) * xmax_(i);
                 }
                 else
+                {
                     U = Wmax(i) * std::abs(xmax_(i)) - Wmax(i) * Err0(i) + (K0(i) * Err0(i) * Err0(i)) / 2. -
                         b * (Wmax(i) - K0(i) * Err0(i)) +
                         b * std::exp(-(std::abs(xmax_(i)) - Err0(i)) / b) * (Wmax(i) - K0(i) * Err0(i));
+                }
 
                 double Kout = U / (xmid * xmid);
                 F_(i) = -Kout * (xmid - Err(i));
 
                 if (std::abs(F_(i)) > Wmax(i))
+                {
                     F_(i) = -sign(xmid - Err(i)) * Wmax(i);
+                }
             }
         }
 
@@ -163,17 +195,25 @@ private:
 };
 
 class StackOfPassiveControllersController
-    : public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
 public:
     StackOfPassiveControllersController() {}
-    ~StackOfPassiveControllersController() { sub_command_.shutdown(); }
-    bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle& n)
+    ~StackOfPassiveControllersController()
     {
+        Eigen::VectorXd tau_final_ = Eigen::VectorXd::Zero(n_joints_);
+        commandTorques(tau_final_);
+        switchToPositionControl();
+        sub_command_.shutdown();
+    }
+
+    bool init(std::shared_ptr<ros::NodeHandle> n)
+    {
+        n_ = n;
+
         // List of controlled joints
-        if (!n.getParam("joints", joint_names_))
+        if (!n->getParam("joints", joint_names_))
         {
-            ROS_ERROR_STREAM("Failed to get list of joints (namespace: " << n.getNamespace() << ").");
+            ROS_ERROR_STREAM("Failed to get list of joints (namespace: " << n->getNamespace() << ").");
             return false;
         }
         n_joints_ = joint_names_.size();
@@ -187,12 +227,13 @@ public:
         }
 
         // Initialise Exotica scene for forward kinematics and Jacobians
-        exotica::Server::InitRos(std::shared_ptr<ros::NodeHandle>(&n));
+        exotica::Server::InitRos(n);
         scene_control_loop_ = exotica::Setup::CreateScene(exotica::SceneInitializer());
         scene_subscriber_ = exotica::Setup::CreateScene(exotica::SceneInitializer());
 
         // ddynamic_reconfigure
-        ddr_.reset(new ddynamic_reconfigure::DDynamicReconfigure(n));
+        ros::NodeHandle nh_priv("~");
+        ddr_.reset(new ddynamic_reconfigure::DDynamicReconfigure(nh_priv));
 
         if (n_joints_ == 0)
         {
@@ -202,16 +243,6 @@ public:
         for (std::size_t i = 0; i < n_joints_; i++)
         {
             const auto& joint_name = joint_names_[i];
-
-            try
-            {
-                joints_.push_back(hw->getHandle(joint_name));
-            }
-            catch (const hardware_interface::HardwareInterfaceException& e)
-            {
-                ROS_ERROR_STREAM("Exception thrown: " << e.what());
-                return false;
-            }
 
             urdf::JointConstSharedPtr joint_urdf = urdf.getJoint(joint_name);
             if (!joint_urdf)
@@ -224,7 +255,7 @@ public:
 
         // Offset in command buffer
         XmlRpc::XmlRpcValue passive_controllers;
-        if (!n.getParam("passive_controllers", passive_controllers))
+        if (!n->getParam("passive_controllers", passive_controllers))
         {
             ROS_ERROR_STREAM("No passive controllers defined, exiting.");
             return false;
@@ -243,8 +274,8 @@ public:
                     return false;
                 }
 
-                std::vector<double> values;  // = static_cast<std::vector<double>>(passive_controller.second[item]);
-                if (!n.getParam("passive_controllers/" + link_name + "/" + item, values))
+                std::vector<double> values;
+                if (!n->getParam("passive_controllers/" + link_name + "/" + item, values))
                 {
                     ROS_ERROR_STREAM("Could not get param '" << item << "' for link '" << link_name << "'.");
                     return false;
@@ -264,7 +295,7 @@ public:
 
             // Check if orientation control is desired
             bool orientation_control = false;
-            n.param<bool>("passive_controllers/" + link_name + "/Orientation", orientation_control, false);
+            n->param<bool>("passive_controllers/" + link_name + "/Orientation", orientation_control, false);
             new_passive_controller.base_for_orientation_control = orientation_control;
             passive_controllers_.push_back(new_passive_controller);
 
@@ -305,39 +336,42 @@ public:
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
             }
+
+            // Add debug publishers
+            pub_fic_[link_name] = n->advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/force", 1);
         }
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_tau", 0, "alpha_tau", 0.95, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_dX", 0, "alpha_dX", 1.0, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_error", 0, "alpha_error", 1.0, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_q", 0, "alpha_q", 0.95, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_qdot", 0, "alpha_qdot", 0.95, 0, 1));
 
         // Initialise real-time thread-safe buffers
         std::vector<double> q(n_joints_);
-        for (std::size_t i = 0; i < n_joints_; ++i)
-        {
-            // q[joints_[i].getName()] = joints_[i].getPosition();
-            q[i] = joints_[i].getPosition();
-        }
+        q.assign(n_joints_, 0.0);
+        q[3] = 1.57;
         UpdateTargetPosesInPassiveControllers(q);
 
         // Subscribe to command topic
-        sub_command_ = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &StackOfPassiveControllersController::commandCB, this);
+        sub_command_ = n->subscribe<std_msgs::Float64MultiArray>("command", 1, &StackOfPassiveControllersController::commandCB, this);
+        sub_joint_state_ = n->subscribe<sensor_msgs::JointState>("/joint_states", 1, &StackOfPassiveControllersController::jointStateCB, this);
+        pub_joint_command_mode_ = n->advertise<ipab_lwr_msgs::FriCommandMode>("/lwr/commandMode", 1);
+        pub_joint_stiffness_command_ = n->advertise<ipab_lwr_msgs::FriCommandJointStiffness>("/lwr/commandJointStiffness", 1);
 
-        // Joint limits
-        // joint_limits_interface::JointLimits limits;
+        // Init tau for smoothing
+        last_tau_ = Eigen::VectorXd::Zero(n_joints_);
+        last_q_ = Eigen::VectorXd::Zero(n_joints_);
+        last_qdot_ = Eigen::VectorXd::Zero(n_joints_);
+        last_error_ = Vector6d::Zero();
+        last_dX_ = Vector6d::Zero();
+        filter_ = MovingAverageFilter(n_joints_, 5);
 
-        return true;
-    }
-
-    void starting(const ros::Time& time)
-    {
-        // std::map<std::string, double> q_current;
-        std::vector<double> q_current(n_joints_);
-        for (std::size_t i = 0; i < n_joints_; ++i)
-        {
-            // q_current[joints_[i].getName()] = joints_[i].getPosition();
-            q_current[i] = joints_[i].getPosition();
-
-            joints_[i].setCommand(joints_[i].getEffort());
-        }
-        UpdateTargetPosesInPassiveControllers(q_current);
-        ROS_INFO_STREAM("Controller starting.");
+        // static const double duration = 10;
+        // static const double frequency = 1/.003;
+        // static const double mincutoff = 1;
+        // static const double beta = 1;
+        // static const double dcutoff = 1;
+        // filter_.reset(new one_euro_filter<>(frequency, mincutoff, beta, dcutoff));
 
         // Publish ddynamic_reconfigure
 
@@ -346,71 +380,23 @@ public:
 
         // awesomebytes (& ANYbotics) / RealSense
         // ddr_->start(&StackOfPassiveControllersController::ddrCB, this);
-        if (!first_start_done_)
-        {
-            first_start_done_ = true;
-            ddr_->start(boost::bind(ddrCB, _1, _2, this));
-        }
-    }
+        // if (!first_start_done_)
+        // {
+        //     first_start_done_ = true;
+        //     ddr_->start(boost::bind(ddrCB, _1, _2, this));
+        // }
 
-    void stopping(const ros::Time& time)
-    {
-        ROS_WARN_STREAM("Stopping controller.");
-    }
-
-    void update(const ros::Time& /*time*/, const ros::Duration& /*period*/)
-    {
-        // TODO:: allocate the Xmax for each link...
-        Eigen::VectorXd q(n_joints_), qdot(n_joints_);
-        std::map<std::string, double> q_for_exotica;
-        for (std::size_t i = 0; i < n_joints_; ++i)
-        {
-            q(i) = joints_[i].getPosition();
-            qdot(i) = joints_[i].getVelocity();
-            q_for_exotica[joints_[i].getName()] = q(i);
-        }
-        scene_control_loop_->GetKinematicTree().SetModelState(q_for_exotica);
-
-        Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_joints_);
-        for (auto& passive_controller : passive_controllers_)
-        {
-            // Skip orientation controllers if they are deactivated.
-            if (passive_controller.orientation_scale == 0.0) continue;
-
-            // Get current link positions
-            KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
-            Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
-
-            // Compute error
-            KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
-            KDL::Twist error_twist = KDL::diff(current_link_position, target_pose);
-            Vector6d error;
-            error.head<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.vel.data);
-            error.tail<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.rot.data);
-            Vector6d dX = current_link_jacobian * qdot;
-
-            auto FIC = passive_controller.FractalImpedanceControl(passive_controller.tmp_Xmax, dX, error);
-            passive_controller.tmp_Xmax = FIC.second;
-
-            // Map back to joint space
-            tau += current_link_jacobian.transpose() * FIC.first;
-            // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
-        }
-
-        // ROS_WARN_STREAM_THROTTLE(1, "Desired torques: " << tau.transpose());
-        for (std::size_t i = 0; i < n_joints_; ++i)
-        {
-            double effort = tau(i);
-            double clamped_effort = clamp(effort, -joint_urdfs_[i]->limits->effort, joint_urdfs_[i]->limits->effort);
-
-            joints_[i].setCommand(clamped_effort);
-        }
+        return true;
     }
 
 protected:
+    std::shared_ptr<ros::NodeHandle> n_;
+    ros::Publisher pub_joint_command_mode_;
+    ros::Publisher pub_joint_stiffness_command_;
+    std::map<std::string, ros::Publisher> pub_fic_;
+
     bool first_start_done_ = false;
     std::vector<std::string> joint_names_;
-    std::vector<hardware_interface::JointHandle> joints_;
     std::size_t n_joints_;
 
     std::vector<urdf::JointConstSharedPtr> joint_urdfs_;
@@ -440,9 +426,167 @@ protected:
         }
     }
 
+    ros::Subscriber sub_joint_state_;
+    sensor_msgs::JointState joint_state_;
+    bool first_joint_state_ = true;
+    Eigen::VectorXd last_tau_;
+    Eigen::VectorXd last_q_;
+    Eigen::VectorXd last_qdot_;
+    Vector6d last_error_;
+    Vector6d last_dX_;
+    // std::unique_ptr<one_euro_filter<>> filter_;
+    MovingAverageFilter filter_;
+    double alpha_tau_ = 1.0;
+    double alpha_error_ = 1.0;
+    double alpha_dX_ = 1.0;
+    double alpha_q_ = 1.0;
+    double alpha_qdot_ = 1.0;
+    void jointStateCB(const sensor_msgs::JointStateConstPtr& msg)
+    {
+        if (msg->position.size() != n_joints_)
+        {
+            ROS_ERROR("Sizes don't match!!!!!!");
+            return;
+        }
+
+        joint_state_ = *msg;
+
+        // If this is the first joint state, update the target pose to current... to avoid crazy behaviour.
+        if (first_joint_state_)
+        {
+            first_joint_state_ = false;
+            UpdateTargetPosesInPassiveControllers(msg->position);
+
+            switchToTorqueControl();
+        }
+
+        if (!first_start_done_)
+        {
+            first_start_done_ = true;
+            ddr_->start(boost::bind(ddrCB, _1, _2, this));
+        }
+
+        // TODO: preallocate all the things.
+
+        // Build message to update Exotica
+        Eigen::VectorXd q(n_joints_);     // = Eigen::Map<Eigen::VectorXd>(msg->position.data(), n_joints_);
+        Eigen::VectorXd qdot(n_joints_);  // = Eigen::Map<Eigen::VectorXd>(msg->velocity.data(), n_joints_);
+        // Eigen::VectorXd tau_measured = Eigen::Map<Eigen::VectorXd>(msg->effort.data(), n_joints_);
+        std::map<std::string, double> q_for_exotica;
+        for (std::size_t i = 0; i < n_joints_; ++i)
+        {
+            q(i) = msg->position[i];
+            qdot(i) = msg->velocity[i];
+
+            // Filter q, qdot
+            q(i) = filters::exponentialSmoothing(q(i), last_q_(i), alpha_q_);
+            qdot(i) = filters::exponentialSmoothing(qdot(i), last_qdot_(i), alpha_qdot_);
+
+            q_for_exotica[joint_names_[i]] = q(i);  // TODO: Use msg->names
+        }
+        last_q_ = q;
+        last_qdot_ = qdot;
+        scene_control_loop_->GetKinematicTree().SetModelState(q_for_exotica);
+
+        Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_joints_);
+        for (auto& passive_controller : passive_controllers_)
+        {
+            // Skip orientation controllers if they are deactivated.
+            if (passive_controller.orientation_scale == 0.0) continue;
+
+            // Get current link positions
+            KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
+            Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
+
+            // Compute error
+            KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
+            KDL::Twist error_twist = KDL::diff(current_link_position, target_pose);
+            Vector6d error;
+            error.head<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.vel.data);
+            error.tail<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.rot.data);
+            Vector6d dX = current_link_jacobian * qdot;
+
+            // Filter error
+            for (int i = 0; i < 6; ++i)
+            {
+                error(i) = filters::exponentialSmoothing(error(i), last_error_(i), alpha_error_);
+                dX(i) = filters::exponentialSmoothing(dX(i), last_dX_(i), alpha_dX_);
+            }
+            last_error_ = error;
+            last_dX_ = dX;
+            ROS_WARN_STREAM_THROTTLE(1, passive_controller.link_name << ": " << error.transpose());
+
+            auto FIC = passive_controller.FractalImpedanceControl(passive_controller.tmp_Xmax, dX, error);
+            passive_controller.tmp_Xmax = FIC.second;
+
+            // Map back to joint space
+            tau += current_link_jacobian.transpose() * FIC.first;
+            std_msgs::Float64MultiArray msg;
+            msg.data.resize(6);
+            for (int i = 0; i < 6; ++i) msg.data[i] = FIC.first(i);
+            pub_fic_[passive_controller.link_name].publish(msg);
+            // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
+        }
+
+        for (std::size_t i = 0; i < n_joints_; ++i)
+        {
+            tau(i) = clamp(tau(i), -joint_urdfs_[i]->limits->effort, joint_urdfs_[i]->limits->effort);
+            // Smooth
+            tau(i) = filters::exponentialSmoothing(tau(i), last_tau_(i), alpha_tau_);
+            // last_tau_(i) = tau(i);
+            // tau(i) = filter_->filter(static_cast<double>(tau(i)), msg->header.stamp.toSec());
+        }
+        // Smooth
+        // tau = filter_.filter(tau);
+
+        ROS_ERROR_STREAM_THROTTLE(1, "tau: " << tau.transpose());
+        commandTorques(tau);
+    }
+
+    void commandTorques(const Eigen::VectorXd& tau)
+    {
+        ipab_lwr_msgs::FriCommandJointStiffness msg;
+        msg.header.stamp = ros::Time::now();
+        msg.jointDamping.assign(n_joints_, 0.);
+        msg.jointStiffness.assign(n_joints_, 0.);
+        msg.jointPosition.resize(n_joints_);
+        msg.jointTorque.resize(n_joints_);
+        for (std::size_t i = 0; i < n_joints_; ++i)
+        {
+            msg.jointPosition[i] = static_cast<float>(joint_state_.position[i]);
+            // TODO: Cancel gravity compensation (!)
+            msg.jointTorque[i] = static_cast<float>(tau(i));
+        }
+        pub_joint_stiffness_command_.publish(msg);
+        // string[] joint_names - unset as controller does not strictly require them
+    }
+
+    void switchControlMode(int mode)
+    {
+        ipab_lwr_msgs::FriCommandMode msg;
+        msg.header.stamp = ros::Time::now();
+        msg.controlMode = mode;
+        pub_joint_command_mode_.publish(msg);
+    }
+
+    void switchToPositionControl()
+    {
+        switchControlMode(10);
+    }
+
+    void switchToTorqueControl()
+    {
+        switchControlMode(30);
+    }
+
     // ddynamic_reconfigure callback
     static void ddrCB(const ddynamic_reconfigure::DDMap& map, int, StackOfPassiveControllersController* obj)
     {
+        obj->alpha_tau_ = ddynamic_reconfigure::get(map, std::string("alpha_tau").c_str()).toDouble();
+        obj->alpha_dX_ = ddynamic_reconfigure::get(map, std::string("alpha_dX").c_str()).toDouble();
+        obj->alpha_error_ = ddynamic_reconfigure::get(map, std::string("alpha_error").c_str()).toDouble();
+        obj->alpha_q_ = ddynamic_reconfigure::get(map, std::string("alpha_q").c_str()).toDouble();
+        obj->alpha_qdot_ = ddynamic_reconfigure::get(map, std::string("alpha_qdot").c_str()).toDouble();
         for (auto& passive_controller : obj->passive_controllers_)
         {
             passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
@@ -493,8 +637,6 @@ protected:
         for (std::size_t i = 0; i < n_joints_; ++i)
             q_exotica[joint_names_[i]] = q[i];
         scene_subscriber_->GetKinematicTree().SetModelState(q_exotica);
-        // auto q_tmp = Eigen::Map<const Eigen::VectorXd>(q.data(), q.size());
-        // HIGHLIGHT_NAMED("UpdateTargetPosesInPassiveControllers", q_tmp.transpose())
         for (auto& passive_controller : passive_controllers_)
         {
             KDL::Frame tmp = scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
@@ -502,8 +644,26 @@ protected:
             passive_controller.target_pose.writeFromNonRT(tmp);
             // passive_controller.target_pose = tmp;
         }
+        // ROS_INFO_STREAM_THROTTLE(1, "Target poses updated");
     }
 };
 }  // namespace stack_of_passive_controllers_controller
 
-PLUGINLIB_EXPORT_CLASS(stack_of_passive_controllers_controller::StackOfPassiveControllersController, controller_interface::ControllerBase)
+int main(int argc, char** argv)
+{
+    ROS_INFO_STREAM("Starting Stack of Fractal Impedance Controllers");
+
+    ros::init(argc, argv, "stack_of_fic_node");
+    std::shared_ptr<ros::NodeHandle> n(new ros::NodeHandle());
+
+    stack_of_passive_controllers_controller::StackOfPassiveControllersController fic;
+    if (!fic.init(n))
+    {
+        ROS_ERROR_STREAM("Could not initialize :'(");
+        exit(-1);
+    }
+
+    ros::AsyncSpinner spinner(4);  // Use 4 threads
+    spinner.start();
+    ros::waitForShutdown();
+}
