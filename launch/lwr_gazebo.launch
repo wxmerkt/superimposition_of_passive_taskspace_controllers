@@ -6,10 +6,10 @@
     <!-- Loads the Gazebo world. -->
     <arg name="paused" default="false"/>
     <arg name="use_sim_time" default="true"/>
-    <!-- <arg name="gui" default="true"/>
-    <arg name="headless" default="false"/> -->
-    <arg name="gui" default="false"/>
-    <arg name="headless" default="true"/>
+    <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/>
+    <!-- <arg name="gui" default="false"/>
+    <arg name="headless" default="true"/> -->
     <arg name="debug" default="false"/>
 
         <!-- <arg name="world_name" value="$(find single_lwr_robot)/worlds/lwr_soma_surface.world"/> -->
