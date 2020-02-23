@@ -1,0 +1,33 @@
+<robot name="obstacle">
+    <link name="link1">
+        <inertial>
+            <mass value="136.866"/>
+            <!-- <mass value="1368.66"/> -->
+            <origin rpy="0 0 0" xyz="0.015082 0.012355 0.25"/>
+            <inertia ixx="2.951e6" ixy="-4.486e4" ixz="-4.249e-1" iyy="3.994e6" iyz="-7.005e-1" izz="1.243e6"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="package://stack_of_passive_controllers_controller/resources/obstacle.stl" scale="0.002 0.002 0.002"/>
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="package://stack_of_passive_controllers_controller/resources/obstacle.stl" scale="0.002 0.002 0.002"/>
+            </geometry>
+            <material name="LightGrey">
+                <color rgba="0.7 0.7 0.7 1.0"/>
+            </material>
+        </collision>
+    </link>
+    <gazebo reference="link1">
+        <mu1>100.0</mu1>
+        <mu2>50.0</mu2>
+        <!-- <fdir1 value="1 1 0"/> -->
+        <!-- <material>Gazebo/Black</material> -->
+        <!-- <turnGravityOff>false</turnGravityOff> -->
+    </gazebo>
+</robot>

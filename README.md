@@ -14,3 +14,14 @@ ROS-Control controller implementing a Stack of Passive Cartesian Controllers
 
 6. `roslaunch stack_of_passive_controllers_controller lwr_ik.launch` - will start IK and rviz
 8. Go to the `rqt_reconfigure` to tune the gains; 
+
+## Gazebo
+1. `roslaunch stack_of_passive_controllers_controller lwr_gazebo.launch`
+2. `rosrun topic_tools relay /lwr/ik_command /lwr/position_controller/command`
+3. ```rosservice call /lwr/controller_manager/switch_controller "start_controllers: ['stack_of_fic']
+stop_controllers: ['position_controller']
+strictness: 0
+start_asap: false
+timeout: 0.0"
+```
+4. `rosrun gazebo_ros spawn_model -urdf -file obstacle.urdf -model obstacle -x -0.2 -y -0.2 -Y 1.57`
