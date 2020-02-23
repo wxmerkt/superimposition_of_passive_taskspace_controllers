@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<IKSolverDemoConfig>
+  <SnoptIKConstrainedSolver Name="MySolver" Summary="0"/>
+
+  <EndPoseProblem Name="MyProblem">
+    <PlanningScene>
+      <Scene>
+        <JointGroup>arm</JointGroup>
+        <!-- <URDF>{exotica_examples}/resources/robots/lwr_simplified.urdf</URDF> -->
+        <!-- <SRDF>{exotica_examples}/resources/robots/lwr_simplified.srdf</SRDF> -->
+      </Scene>
+    </PlanningScene>
+    
+    <Maps>
+      <EffFrame Name="Position">
+        <EndEffector>
+            <!-- <Frame Link="lwr_arm_7_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 0"/> -->
+            <Frame Link="lwr_7_link" LinkOffset="0 0 0 0.7071067811865476 -4.3297802811774664e-17  0.7071067811865475 0"/>
+        </EndEffector>
+      </EffFrame>
+      <JointTorqueMinimizationProxy Name="Posture"/>
+    </Maps>
+
+    <Equality>
+        <Task Task="Position"/>
+    </Equality>
+
+    <Cost>
+      <Task Task="Posture" Rho="1e3"/>
+    </Cost>
+  </EndPoseProblem>
+</IKSolverDemoConfig>

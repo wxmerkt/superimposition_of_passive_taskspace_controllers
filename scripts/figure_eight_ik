@@ -36,8 +36,12 @@ w1 = tk.Scale(window, from_=0.0, to=2.0, orient=tk.HORIZONTAL, length=300, resol
 w1.pack()
 
 exo.Setup.init_ros()
-solver = exo.Setup.load_solver(
-    '{stack_of_passive_controllers_controller}/config/figure_eight_ik.xml')
+constrained_ik = False
+if constrained_ik:
+    solver = exo.Setup.load_solver('{stack_of_passive_controllers_controller}/config/ik_gazebo.xml')
+else:
+    solver = exo.Setup.load_solver('{stack_of_passive_controllers_controller}/config/figure_eight_ik.xml')
+
 problem = solver.get_problem()
 print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())
 
@@ -48,7 +52,10 @@ sub = rospy.Subscriber("/joint_states", JointState, joint_states_data_cb)
 while js_map is None:
     sleep(0.1)
 
-problem.set_goal('Position', figure_eight(0.0))
+if constrained_ik:
+    problem.set_goal_eq('Position', figure_eight(0.0))
+else:
+    problem.set_goal('Position', figure_eight(0.0))
 solver.max_iterations = 100
 q = solver.solve()[0]
 solver.max_iterations = 5
@@ -59,7 +66,10 @@ print('Publishing IK')
 signal.signal(signal.SIGINT, sig_int_handler)
 while True:
     try:
-        problem.set_goal('Position', figure_eight(t))
+        if constrained_ik:
+            problem.set_goal_eq('Position', figure_eight(t))
+        else:
+            problem.set_goal('Position', figure_eight(t))
         # if js_map is not None:
         #     problem.update(js_q)
         #     # problem.get_scene().set_model_state_map(js_map)
