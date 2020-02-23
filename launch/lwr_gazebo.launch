@@ -45,7 +45,10 @@
     </group>
 
     <!-- IK -->
-    <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/>
+    <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen">
+        <remap from="joint_states" to="/$(arg robot_name)/joint_states" />
+        <remap from="command" to="/lwr/ik_command" />
+    </node>
     <node name="ik_relay" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/stack_of_fic/command"/>
     <!-- <node name="ik_relay_2" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/position_controller/command"/> -->
 
