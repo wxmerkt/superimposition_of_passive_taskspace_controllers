@@ -12,7 +12,6 @@ Panels:
         - /RobotModel2/Links1
         - /RobotModel2/Links1/lwr_7_link1
         - /Marker1
-        - /Marker1/Status1
       Splitter Ratio: 0.5721924901008606
     Tree Height: 1162
   - Class: rviz/Selection
@@ -286,10 +285,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4500000476837158
+      Pitch: 0.20000000298023224
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 6.28000020980835
+      Yaw: 5.183185577392578
     Saved:
       - Class: rviz/Orbit
         Distance: 1.43684983253479

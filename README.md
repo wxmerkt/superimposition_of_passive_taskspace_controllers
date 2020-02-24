@@ -24,5 +24,5 @@ strictness: 0
 start_asap: false
 timeout: 0.0"
 ```
-4. `rosrun gazebo_ros spawn_model -sdf -file obstacle.sdf -model obstacle`
+4. `rosrun gazebo_ros spawn_model -sdf -file `rospack find stack_of_passive_controllers_controller`/resources/obstacle.sdf -model obstacle`
 5. `rosrun stack_of_passive_controllers_controller publish_obstacle_marker_to_rviz`

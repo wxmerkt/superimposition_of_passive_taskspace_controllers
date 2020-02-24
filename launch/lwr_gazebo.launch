@@ -19,6 +19,7 @@
         <arg name="paused" value="$(arg paused)"/>
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="headless" value="$(arg headless)"/>
+        <!-- TODO: Set Solver Iterations -->
     </include>
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->

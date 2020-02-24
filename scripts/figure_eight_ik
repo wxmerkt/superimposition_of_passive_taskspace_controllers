@@ -47,6 +47,7 @@ print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())
 
 pub = rospy.Publisher("/command", Float64MultiArray, queue_size=1)
 sub = rospy.Subscriber("/joint_states", JointState, joint_states_data_cb)
+sleep(0.25)
 
 # Wait for joint states to be populated
 while js_map is None:
@@ -55,10 +56,26 @@ while js_map is None:
 if constrained_ik:
     problem.set_goal_eq('Position', figure_eight(0.0))
 else:
-    problem.set_goal('Position', figure_eight(0.0))
+    target = figure_eight(0.0)
+    # np.set_printoptions(2, suppress=True)
+    # print(target)
+    # target[0] += 0.2
+    # print(target)
+    problem.set_goal('Position', target)
 solver.max_iterations = 100
 q = solver.solve()[0]
 solver.max_iterations = 5
+
+# if not constrained_ik:
+#     print(q)
+#     msg = Float64MultiArray()
+#     msg.data = q[:7]
+#     for _ in range(10):
+#         pub.publish(msg)
+#         sleep(0.01)
+#     publish_pose(q, problem)
+#     sleep(1)
+#     exit()
 
 dt = 0.003
 t = 0.0
