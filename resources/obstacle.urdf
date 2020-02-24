@@ -1,4 +1,5 @@
 <robot name="obstacle">
+    <static>true</static>
     <link name="link1">
         <inertial>
             <mass value="136.866"/>
@@ -30,4 +31,9 @@
         <!-- <material>Gazebo/Black</material> -->
         <!-- <turnGravityOff>false</turnGravityOff> -->
     </gazebo>
+    <!-- <joint name="obstacle_joint" type="fixed">
+        <pose>-0.3 0 0 0 0 1.57</pose>
+        <parent>world</parent>
+        <child>link1</child>
+    </joint> -->
 </robot>

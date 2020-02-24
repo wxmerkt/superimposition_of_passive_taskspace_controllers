@@ -24,4 +24,5 @@ strictness: 0
 start_asap: false
 timeout: 0.0"
 ```
-4. `rosrun gazebo_ros spawn_model -urdf -file obstacle.urdf -model obstacle -x -0.2 -y -0.2 -Y 1.57`
+4. `rosrun gazebo_ros spawn_model -sdf -file obstacle.sdf -model obstacle`
+5. `rosrun stack_of_passive_controllers_controller publish_obstacle_marker_to_rviz`
