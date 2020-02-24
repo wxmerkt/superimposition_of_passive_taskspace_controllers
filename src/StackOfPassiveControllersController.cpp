@@ -178,6 +178,12 @@ public:
         }
         n_joints_ = joint_names_.size();
 
+        // Joint damping (e.g. for simulation)
+        if (!n.getParam("joint_damping", joint_damping_))
+        {
+            joint_damping_ = 0.;
+        }
+
         // Get URDF
         urdf::Model urdf;
         if (!urdf.initParam("robot_description"))
@@ -295,13 +301,13 @@ public:
             if (new_passive_controller.base_for_orientation_control) ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/OrientationScale", 0, link_name + "/OrientationScale (relative to position)", 0.2, 0, 5));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_scale", 0, link_name + "/Wmax_scale (for Wmax and K0)", 1, 0, 100));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_trans", 0, link_name + "/Wmax_trans", parsed_values["Wmax"](0), 0, 1000));
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 1000));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 10000));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_trans", 0, link_name + "/Err0_trans", parsed_values["Err0"](0), 0, 0.2));
             ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_trans", 0, link_name + "/Errb_trans", parsed_values["Errb"](0), 0, 0.2));
             if (!orientation_control)
             {
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
-                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 100));
+                ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 10000));
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
             }
@@ -361,12 +367,13 @@ public:
     void update(const ros::Time& /*time*/, const ros::Duration& /*period*/)
     {
         // TODO:: allocate the Xmax for each link...
-        Eigen::VectorXd q(n_joints_), qdot(n_joints_);
+        Eigen::VectorXd q(n_joints_), qdot(n_joints_), tau_measured(n_joints_);
         std::map<std::string, double> q_for_exotica;
         for (std::size_t i = 0; i < n_joints_; ++i)
         {
             q(i) = joints_[i].getPosition();
             qdot(i) = joints_[i].getVelocity();
+            tau_measured(i) = joints_[i].getEffort();
             q_for_exotica[joints_[i].getName()] = q(i);
         }
         scene_control_loop_->GetKinematicTree().SetModelState(q_for_exotica);
@@ -397,14 +404,19 @@ public:
             // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
         }
 
-        // ROS_WARN_STREAM_THROTTLE(1, "Desired torques: " << tau.transpose());
+        // Add joint damping
+        tau -= joint_damping_ * qdot;
+
+        Eigen::VectorXd tau_command = tau;
         for (std::size_t i = 0; i < n_joints_; ++i)
         {
-            double effort = tau(i);
-            double clamped_effort = clamp(effort, -joint_urdfs_[i]->limits->effort, joint_urdfs_[i]->limits->effort);
-
-            joints_[i].setCommand(clamped_effort);
+            tau_command(i) = clamp(tau(i), -joint_urdfs_[i]->limits->effort, joint_urdfs_[i]->limits->effort);
+            joints_[i].setCommand(tau_command(i));
         }
+
+        // ROS_WARN_STREAM_THROTTLE(0.5, "[tau_measured] " << tau_measured.transpose());
+        // ROS_INFO_STREAM_THROTTLE(0.5, "[tau_desired]  " << tau.transpose());
+        // ROS_INFO_STREAM_THROTTLE(0.5, "[tau_command]  " << tau_command.transpose());
     }
 
 protected:
@@ -412,6 +424,7 @@ protected:
     std::vector<std::string> joint_names_;
     std::vector<hardware_interface::JointHandle> joints_;
     std::size_t n_joints_;
+    double joint_damping_ = 0.0;
 
     std::vector<urdf::JointConstSharedPtr> joint_urdfs_;
 
