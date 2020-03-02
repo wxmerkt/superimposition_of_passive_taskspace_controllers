@@ -77,7 +77,8 @@ struct PassiveController
             constexpr double capacitor_charge = 20.;
             const double b = (Errb(i) - Err0(i)) / capacitor_charge;
 
-            if (sign(Err(i)) == -sign(dX(i)) || dX(i) == 0.)
+            constexpr double cartesian_velocity_tolerance = 1e-2;
+            if (sign(Err(i)) == -sign(dX(i)) || std::abs(dX(i)) < cartesian_velocity_tolerance)
             {
                 xmax_(i) = Err(i);
                 if (std::abs(Err(i)) < Err0(i))
@@ -114,15 +115,19 @@ struct PassiveController
                     U = 0.5 * K0(i) * xmax_(i) * xmax_(i);
                 }
                 else
+                {
                     U = Wmax(i) * std::abs(xmax_(i)) - Wmax(i) * Err0(i) + (K0(i) * Err0(i) * Err0(i)) / 2. -
                         b * (Wmax(i) - K0(i) * Err0(i)) +
                         b * std::exp(-(std::abs(xmax_(i)) - Err0(i)) / b) * (Wmax(i) - K0(i) * Err0(i));
+                }
 
                 double Kout = U / (xmid * xmid);
                 F_(i) = -Kout * (xmid - Err(i));
 
                 if (std::abs(F_(i)) > Wmax(i))
+                {
                     F_(i) = -sign(xmid - Err(i)) * Wmax(i);
+                }
             }
         }
 
@@ -311,7 +316,15 @@ public:
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
                 ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
             }
+
+            // Add debug publishers
+            pub_fic_[link_name] = n.advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/force", 1);
         }
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_tau", 0, "alpha_tau", 0.95, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_dX", 0, "alpha_dX", 1.0, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_error", 0, "alpha_error", 1.0, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_q", 0, "alpha_q", 0.95, 0, 1));
+        ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_qdot", 0, "alpha_qdot", 0.95, 0, 1));
 
         // Initialise real-time thread-safe buffers
         std::vector<double> q(n_joints_);
@@ -376,6 +389,8 @@ public:
             tau_measured(i) = joints_[i].getEffort();
             q_for_exotica[joints_[i].getName()] = q(i);
         }
+        last_q_ = q;
+        last_qdot_ = qdot;
         scene_control_loop_->GetKinematicTree().SetModelState(q_for_exotica);
 
         Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_joints_);
@@ -396,11 +411,25 @@ public:
             error.tail<3>() = Eigen::Map<Eigen::Vector3d>(error_twist.rot.data);
             Vector6d dX = current_link_jacobian * qdot;
 
+            // Filter error
+            // for (int i = 0; i < 6; ++i)
+            // {
+            //     error(i) = filters::exponentialSmoothing(error(i), last_error_(i), alpha_error_);
+            //     dX(i) = filters::exponentialSmoothing(dX(i), last_dX_(i), alpha_dX_);
+            // }
+            last_error_ = error;
+            last_dX_ = dX;
+            // ROS_WARN_STREAM_THROTTLE(1, passive_controller.link_name << ": " << error.transpose());
+
             auto FIC = passive_controller.FractalImpedanceControl(passive_controller.tmp_Xmax, dX, error);
             passive_controller.tmp_Xmax = FIC.second;
 
             // Map back to joint space
             tau += current_link_jacobian.transpose() * FIC.first;
+            std_msgs::Float64MultiArray msg;
+            msg.data.resize(6);
+            for (int i = 0; i < 6; ++i) msg.data[i] = FIC.first(i);
+            pub_fic_[passive_controller.link_name].publish(msg);
             // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
         }
 
@@ -437,6 +466,24 @@ protected:
 
     // Stack of controllers
     std::vector<PassiveController> passive_controllers_;
+
+    // Debug publishers
+    std::map<std::string, ros::Publisher> pub_fic_;
+
+    // Smoothing
+    bool first_joint_state_ = true;
+    Eigen::VectorXd last_tau_;
+    Eigen::VectorXd last_q_;
+    Eigen::VectorXd last_qdot_;
+    Vector6d last_error_;
+    Vector6d last_dX_;
+    // std::unique_ptr<one_euro_filter<>> filter_;
+    // MovingAverageFilter filter_;
+    double alpha_tau_ = 1.0;
+    double alpha_error_ = 1.0;
+    double alpha_dX_ = 1.0;
+    double alpha_q_ = 1.0;
+    double alpha_qdot_ = 1.0;
 
     // Subscriber for new commands (real-time safe)
     ros::Subscriber sub_command_;
