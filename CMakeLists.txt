@@ -21,16 +21,25 @@ find_package(Eigen3 REQUIRED)
 
 # Export catkin package
 catkin_package(
+  INCLUDE_DIRS include/
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
   DEPENDS pluginlib
 )
 
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-  
+
+include_directories(include/)
+
 ###########
 ## Build ##
 ###########
+add_library(stack_of_task_space_controllers src/stack_of_task_space_controllers.cpp)
+add_dependencies(stack_of_task_space_controllers ${catkin_EXPORTED_TARGETS})
+target_link_libraries(stack_of_task_space_controllers ${catkin_LIBRARIES})
+target_include_directories(stack_of_task_space_controllers PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
+target_compile_options(stack_of_task_space_controllers PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
+
 add_library(${PROJECT_NAME} src/StackOfPassiveControllersController.cpp)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
@@ -54,6 +63,9 @@ install(TARGETS ${PROJECT_NAME}
 )
 install(DIRECTORY launch config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+install(DIRECTORY include/stack_of_passive_controllers_controller
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
 install(FILES StackOfPassiveControllersController.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
