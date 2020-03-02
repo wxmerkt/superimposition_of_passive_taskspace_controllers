@@ -40,12 +40,14 @@ target_link_libraries(stack_of_task_space_controllers ${catkin_LIBRARIES})
 target_include_directories(stack_of_task_space_controllers PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 target_compile_options(stack_of_task_space_controllers PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
 
+# ROS-Control Controller
 add_library(${PROJECT_NAME} src/StackOfPassiveControllersController.cpp)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} stack_of_task_space_controllers)
 target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PUBLIC -std=c++14 -Wall)
 
+# LWR Streaming Controller
 add_executable(fic_node src/stack_of_fic_node.cpp)
 add_dependencies(fic_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(fic_node ${catkin_LIBRARIES})
