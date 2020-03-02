@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stack_of_task_space_controllers_kuka_lwr</name>
+  <version>1.0.0</version>
+  <description>Package for running the Stack of Task Space Controllers with the Kuka LWR3+ (real + Gazebo)</description>
+
+  <maintainer email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</maintainer>
+  <author email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</author>
+  <license>BSD</license>
+
+  <!-- <url type="website">http://wiki.ros.org/stack_of_task_space_controllers_kuka_lwr</url> -->
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>eigen</depend>
+  <depend>ipab_lwr_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>stack_of_task_space_controllers_core</depend>
+  <depend>stack_of_task_space_controllers_ros_control</depend>
+</package>

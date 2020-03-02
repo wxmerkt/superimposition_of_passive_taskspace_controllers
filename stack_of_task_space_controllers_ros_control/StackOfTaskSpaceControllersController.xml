@@ -1,0 +1,7 @@
+<library path="lib/libstack_of_task_space_controllers_ros_control">
+  <class name="stack_of_task_space_controllers/StackOfTaskSpaceControllersController" type="stack_of_task_space_controllers::StackOfTaskSpaceControllersController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      Stack of Task Space Controllers
+    </description>
+  </class>
+</library>

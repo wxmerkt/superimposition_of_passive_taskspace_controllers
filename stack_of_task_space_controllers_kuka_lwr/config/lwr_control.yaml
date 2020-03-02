@@ -1,0 +1,77 @@
+joint_state_controller:
+  type: joint_state_controller/JointStateController
+  publish_rate: 100
+
+position_controller:
+  type: position_controllers/JointGroupPositionController
+  joints:
+    - lwr_a1_joint
+    - lwr_a2_joint
+    - lwr_e1_joint
+    - lwr_a3_joint
+    - lwr_a4_joint
+    - lwr_a5_joint
+    - lwr_a6_joint
+
+# position_controller:
+#   type: position_controllers/JointTrajectoryController
+#   joints: 
+#     - lwr_a1_joint
+#     - lwr_a2_joint
+#     - lwr_e1_joint
+#     - lwr_a3_joint
+#     - lwr_a4_joint
+#     - lwr_a5_joint
+#     - lwr_a6_joint
+
+stack_of_fic:
+  type: stack_of_task_space_controllers_ros_control/StackOfTaskSpaceControllersController
+  joints:
+    - lwr_a1_joint
+    - lwr_a2_joint
+    - lwr_e1_joint
+    - lwr_a3_joint
+    - lwr_a4_joint
+    - lwr_a5_joint
+    - lwr_a6_joint
+  joint_damping: 0.0
+  passive_controllers:
+    # lwr_3_link:
+    #   Wmax: [10., 10., 10., 0., 0., 0.]
+    #   Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+    #   Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
+    #   K0: [10., 10., 10., 0., 0., 0.]
+    # This is using the new orientation formulation with 3 extra points.
+    # lwr_6_link:
+    #   # Wmax: [5000., 5000., 5000., 25., 25., 25.]
+    #   # Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+    #   # Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
+    #   # K0: [5000., 5000., 5000., 25., 25., 25.]
+    #   Wmax: [180., 180., 180., 0., 0., 0.]
+    #   Err0: [0.005, 0.005, 0.005, 0.057, 0.057, 0.057]
+    #   Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
+    #   K0: [180., 180., 180., 0., 0., 0.]
+    #   Orientation: true
+    # Using the Twist
+    # lwr_6_link:
+    #   # Wmax: [5000., 5000., 5000., 25., 25., 25.]
+    #   # Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+    #   # Errb: [0.02, 0.02, 0.02, 0.63, 0.63, 0.63]
+    #   # K0: [5000., 5000., 5000., 25., 25., 25.]
+    #   Wmax: [900., 900., 900., 500., 500., 500.]
+    #   Err0: [0.001, 0.001, 0.001, 0.002, 0.002, 0.002]
+    #   Errb: [0.002, 0.002, 0.002, 0.003, 0.003, 0.003]
+    #   K0: [900., 900., 900., 500., 500., 500.]
+
+    # From real robot
+    lwr_3_link:
+    # lwr_arm_3_link:
+      Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+      Errb: [0.011, 0.011, 0.011, 0.63, 0.63, 0.63]
+      Wmax: [50., 50., 50., 0., 0., 0.]
+      K0: [5000., 5000., 5000., 0., 0., 0.]
+    lwr_7_link:
+      Wmax: [150., 150., 150., 100., 100., 100.]
+      Err0: [0.005, 0.005, 0.005, 0.057, 0.057, 0.057]
+      Errb: [0.006, 0.006, 0.006, 0.63, 0.63, 0.63]
+      K0: [5000., 5000., 5000., 100., 100., 100.]

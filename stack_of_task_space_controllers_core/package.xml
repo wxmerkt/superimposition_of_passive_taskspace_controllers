@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stack_of_task_space_controllers_core</name>
+  <version>1.0.0</version>
+  <description>The stack_of_task_space_controllers_core package</description>
+
+  <maintainer email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</maintainer>
+  <author email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</author>
+  <license>BSD</license>
+
+  <!-- <url type="website">http://wiki.ros.org/stack_of_task_space_controllers_core</url> -->
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>ddynamic_reconfigure</depend>
+  <depend>eigen</depend>
+  <depend>exotica_core</depend>
+  <depend>realtime_tools</depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>urdf</depend>
+</package>
