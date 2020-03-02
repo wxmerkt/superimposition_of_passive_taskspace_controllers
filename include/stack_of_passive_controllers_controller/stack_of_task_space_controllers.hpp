@@ -42,8 +42,9 @@ struct RobotState
 class StackOfTaskSpaceControllersController
 {
 public:
-    StackOfTaskSpaceControllersController(ros::NodeHandle& n);
-    ~StackOfTaskSpaceControllersController();
+    StackOfTaskSpaceControllersController() {}
+    ~StackOfTaskSpaceControllersController() { sub_command_.shutdown(); }
+    void Initialize(ros::NodeHandle& n);
 
     // Method to update the internal state of the target task space poses from a joint configuration vector
     void UpdateTargetPosesInPassiveControllers(const std::vector<double>& q);
@@ -64,7 +65,11 @@ public:
     // Method to calculate torque to command based on internal information on state and targets
     Eigen::VectorXd ComputeCommandTorques();
 
+    const std::vector<std::string>& get_joint_names() const { return joint_names_; }
+    const std::size_t& get_n_joints() const { return n_joints_; }
 protected:
+    bool initialized_ = false;
+
     std::vector<std::string> joint_names_;
     std::size_t n_joints_;
     double joint_damping_ = 0.0;

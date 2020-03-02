@@ -22,7 +22,7 @@ find_package(Eigen3 REQUIRED)
 # Export catkin package
 catkin_package(
   INCLUDE_DIRS include/
-  LIBRARIES ${PROJECT_NAME}
+  LIBRARIES ${PROJECT_NAME} stack_of_task_space_controllers
   CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
   DEPENDS pluginlib
 )
@@ -42,7 +42,7 @@ target_compile_options(stack_of_task_space_controllers PUBLIC -std=c++14 -Wall -
 
 add_library(${PROJECT_NAME} src/StackOfPassiveControllersController.cpp)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} stack_of_task_space_controllers)
 target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PUBLIC -std=c++14 -Wall)
 

@@ -7,7 +7,7 @@ inline double clamp(double x, double lower, double upper)
     return std::max(lower, std::min(upper, x));
 }
 
-StackOfTaskSpaceControllersController::StackOfTaskSpaceControllersController(ros::NodeHandle& n)
+void StackOfTaskSpaceControllersController::Initialize(ros::NodeHandle& n)
 {
     ROS_INFO_STREAM("Init!");
 
@@ -145,6 +145,8 @@ StackOfTaskSpaceControllersController::StackOfTaskSpaceControllersController(ros
     ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_q", 0, "alpha_q", 0.95, 0, 1));
     ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_qdot", 0, "alpha_qdot", 0.95, 0, 1));
 
+    initialized_ = true;
+
     // Initialise real-time thread-safe buffers
     std::vector<double> q(n_joints_);
     for (std::size_t i = 0; i < n_joints_; ++i)
@@ -158,11 +160,15 @@ StackOfTaskSpaceControllersController::StackOfTaskSpaceControllersController(ros
 
     // Joint limits
     // joint_limits_interface::JointLimits limits;
+
+    ddr_->start(boost::bind(ddrCB, _1, _2, this));
 }
 
 // Method to update all targets from a joint configuration
 void StackOfTaskSpaceControllersController::UpdateTargetPosesInPassiveControllers(const std::vector<double>& q)
 {
+    if (!initialized_) ThrowPretty("Not initialized.");
+
     std::map<std::string, double> q_exotica;
     for (std::size_t i = 0; i < n_joints_; ++i)
         q_exotica[joint_names_[i]] = q[i];
@@ -180,6 +186,8 @@ void StackOfTaskSpaceControllersController::UpdateTargetPosesInPassiveController
 
 void StackOfTaskSpaceControllersController::UpdateCurrentStateFromRobotState()  //(const std::vector<double>& q, const std::vector<double>& qdot)
 {
+    if (!initialized_) ThrowPretty("Not initialized.");
+
     // if (q.size() != joint_names_.size() || qdot.size() != joint_names_.size())
     // {
     //     ThrowPretty("Size mismatch: " << q.size() << " vs " << joint_names_.size());
@@ -197,6 +205,8 @@ void StackOfTaskSpaceControllersController::UpdateCurrentStateFromRobotState()  
 
 Eigen::VectorXd StackOfTaskSpaceControllersController::ComputeCommandTorques()
 {
+    if (!initialized_) ThrowPretty("Not initialized.");
+
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_joints_);
     for (auto& passive_controller : passive_controllers_)
     {
