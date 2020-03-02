@@ -1,7 +1,0 @@
-<library path="lib/libstack_of_passive_controllers_controller">
-  <class name="stack_of_passive_controllers_controller/StackOfPassiveControllersController" type="stack_of_passive_controllers_controller::StackOfPassiveControllersController" base_class_type="controller_interface::ControllerBase">
-    <description>
-      Stack of Fractal Impedance Controllers
-    </description>
-  </class>
-</library>

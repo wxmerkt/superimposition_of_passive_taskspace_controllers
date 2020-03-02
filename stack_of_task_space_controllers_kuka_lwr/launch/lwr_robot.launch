@@ -10,7 +10,7 @@
     <!-- Spawn controllers -->
     <group ns="$(arg robot_name)">
         <!-- Loads joint controller configurations from YAML file to parameter server -->
-        <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
+        <rosparam file="$(find stack_of_task_space_controllers_kuka_lwr)/config/lwr_control.yaml" command="load" />
 
         <!-- Loads the controllers -->
         <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="lwr_control" />
@@ -22,13 +22,13 @@
     </group>
 
     <!-- IK -->
-    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/> -->
+    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_task_space_controllers_kuka_lwr" type="figure_eight_ik" output="screen"/> -->
 
     <!-- Static Transform Publisher to connect EXOTica tree -->
     <!-- <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/> -->
 
     <!-- RViz -->
-    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/> -->
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_task_space_controllers_kuka_lwr)/config/rviz.rviz"/> -->
 
     <!-- Dynamic Reconfigure -->
     <!-- <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/> -->

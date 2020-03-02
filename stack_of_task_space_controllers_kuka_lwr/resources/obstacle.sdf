@@ -20,8 +20,8 @@
       <collision name='collision'>
         <geometry>
           <mesh>
-            <uri>/home/wxm/dev/exotica_ws/src/stack_of_passive_controllers_controller/resources/obstacle.stl</uri>
-            <!-- <uri>model://stack_of_passive_controllers_controller/resources/obstacle.stl</uri> -->
+            <uri>/home/wxm/dev/exotica_ws/src/stack_of_passive_controllers_controller/stack_of_task_space_controllers_kuka_lwr/resources/obstacle.stl</uri>
+            <!-- <uri>model://stack_of_task_space_controllers_kuka_lwr/resources/obstacle.stl</uri> -->
             <scale>0.002 0.002 0.002</scale>
           </mesh>
         </geometry>
@@ -38,8 +38,8 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <!-- <uri>package://stack_of_passive_controllers_controller/resources/obstacle.dae</uri> -->
-            <uri>/home/wxm/dev/exotica_ws/src/stack_of_passive_controllers_controller/resources/obstacle.dae</uri>
+            <!-- <uri>package://stack_of_task_space_controllers_kuka_lwr/resources/obstacle.dae</uri> -->
+            <uri>/home/wxm/dev/exotica_ws/src/stack_of_passive_controllers_controller/stack_of_task_space_controllers_kuka_lwr/resources/obstacle.dae</uri>
           </mesh>
         </geometry>
         <material>

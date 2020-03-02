@@ -34,7 +34,7 @@ def figure_eight(t):
 
 exo.Setup.init_ros()
 solver = exo.Setup.load_solver(
-    '{stack_of_passive_controllers_controller}/config/figure_eight_ik.xml')
+    '{stack_of_task_space_controllers_kuka_lwr}/config/figure_eight_ik.xml')
 problem = solver.get_problem()
 
 # pub = rospy.Publisher("/command", Float64MultiArray, queue_size=1)

@@ -9,7 +9,7 @@
 	<arg name="stopped_controllers" default="stack_of_fic"/>
 
 	<!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <include file="$(find stack_of_passive_controllers_controller)/launch/load_lwr_robot_description.launch"/>
+    <include file="$(find stack_of_task_space_controllers_kuka_lwr)/launch/load_lwr_robot_description.launch"/>
 
 	<!-- joint and robot state publishers of the full robot description -->
 	<!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
@@ -35,7 +35,7 @@
 		</include>
 
 		<!-- Loads joint controller configurations from YAML file to parameter server -->
-        <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
+        <rosparam file="$(find stack_of_task_space_controllers_kuka_lwr)/config/lwr_control.yaml" command="load" />
 
         <!-- Converts joint states to TF transforms for rviz, etc -->
         <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
@@ -49,7 +49,7 @@
 	</group>
 
 	<!-- IK -->
-    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen"/> -->
+    <!-- <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_task_space_controllers_kuka_lwr" type="figure_eight_ik" output="screen"/> -->
     <!-- <node name="ik_relay" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/stack_of_fic/command"/> -->
     <!-- <node name="ik_relay_2" pkg="topic_tools" type="relay" args="/lwr/ik_command /lwr/position_controller/command"/> -->
 
@@ -57,7 +57,7 @@
     <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
 
     <!-- RViz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_task_space_controllers_kuka_lwr)/config/rviz.rviz"/>
 
     <!-- Dynamic Reconfigure -->
     <!-- <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/> -->

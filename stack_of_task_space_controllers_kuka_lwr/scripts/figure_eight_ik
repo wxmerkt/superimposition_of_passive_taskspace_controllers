@@ -38,9 +38,9 @@ w1.pack()
 exo.Setup.init_ros()
 constrained_ik = False
 if constrained_ik:
-    solver = exo.Setup.load_solver('{stack_of_passive_controllers_controller}/config/ik_gazebo.xml')
+    solver = exo.Setup.load_solver('{stack_of_task_space_controllers_kuka_lwr}/config/ik_gazebo.xml')
 else:
-    solver = exo.Setup.load_solver('{stack_of_passive_controllers_controller}/config/figure_eight_ik.xml')
+    solver = exo.Setup.load_solver('{stack_of_task_space_controllers_kuka_lwr}/config/figure_eight_ik.xml')
 
 problem = solver.get_problem()
 print(problem.get_scene().get_kinematic_tree().get_controlled_joint_names())

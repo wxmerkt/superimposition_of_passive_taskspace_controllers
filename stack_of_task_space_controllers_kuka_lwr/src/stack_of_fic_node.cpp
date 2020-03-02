@@ -65,7 +65,7 @@ struct MovingAverageFilter
     bool init_ = false;
 };
 
-namespace stack_of_passive_controllers_controller
+namespace stack_of_task_space_controllers
 {
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
@@ -647,7 +647,7 @@ protected:
         // ROS_INFO_STREAM_THROTTLE(1, "Target poses updated");
     }
 };
-}  // namespace stack_of_passive_controllers_controller
+}  // namespace stack_of_task_space_controllers
 
 int main(int argc, char** argv)
 {
@@ -656,7 +656,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "stack_of_fic_node");
     std::shared_ptr<ros::NodeHandle> n(new ros::NodeHandle());
 
-    stack_of_passive_controllers_controller::StackOfPassiveControllersController fic;
+    stack_of_task_space_controllers::StackOfPassiveControllersController fic;
     if (!fic.init(n))
     {
         ROS_ERROR_STREAM("Could not initialize :'(");

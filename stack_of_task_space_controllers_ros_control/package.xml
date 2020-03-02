@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>stack_of_task_space_controllers_ros_control</name>
+  <version>1.0.0</version>
+  <description>ROS-Control controller for Stack-of-Task-Space-Controllers</description>
+
+  <maintainer email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</maintainer>
+  <author email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</author>
+  <license>BSD</license>
+
+  <!-- <url type="website">http://wiki.ros.org/stack_of_task_space_controllers_ros_control</url> -->
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>control_toolbox</build_depend>
+  <build_depend>ros_control</build_depend>
+  <build_export_depend>control_toolbox</build_export_depend>
+  <build_export_depend>ros_control</build_export_depend>
+  <exec_depend>control_toolbox</exec_depend>
+  <exec_depend>ros_control</exec_depend>
+
+  <depend>controller_interface</depend>
+  <depend>hardware_interface</depend>
+  <depend>roscpp</depend>
+  <depend>stack_of_task_space_controllers_core</depend>
+  <depend>pluginlib</depend>
+
+  <export>
+    <controller_interface plugin="${prefix}/StackOfTaskSpaceControllersController.xml"/>
+  </export>
+</package>

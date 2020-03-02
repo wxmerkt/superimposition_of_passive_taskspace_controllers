@@ -6,10 +6,10 @@
     <!-- Loads the Gazebo world. -->
     <arg name="paused" default="false"/>
     <arg name="use_sim_time" default="true"/>
-    <arg name="gui" default="true"/>
-    <arg name="headless" default="false"/>
-    <!-- <arg name="gui" default="false"/>
-    <arg name="headless" default="true"/> -->
+    <!-- <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/> -->
+    <arg name="gui" default="false"/>
+    <arg name="headless" default="true"/>
     <arg name="debug" default="false"/>
 
         <!-- <arg name="world_name" value="$(find single_lwr_robot)/worlds/lwr_soma_surface.world"/> -->
@@ -23,7 +23,7 @@
     </include>
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <include file="$(find stack_of_passive_controllers_controller)/launch/load_lwr_robot_description.launch"/>
+    <include file="$(find stack_of_task_space_controllers_kuka_lwr)/launch/load_lwr_robot_description.launch"/>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
     <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model lwr -param robot_description -J lwr_a3_joint 1.57"/>
@@ -31,7 +31,7 @@
     <!-- Spawn controllers -->
     <group ns="$(arg robot_name)">
         <!-- Loads joint controller configurations from YAML file to parameter server -->
-        <rosparam file="$(find stack_of_passive_controllers_controller)/config/lwr_control.yaml" command="load" />
+        <rosparam file="$(find stack_of_task_space_controllers_kuka_lwr)/config/lwr_control.yaml" command="load" />
 
         <!-- Loads the controllers -->
         <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller position_controller" />
@@ -46,7 +46,7 @@
     </group>
 
     <!-- IK -->
-    <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_passive_controllers_controller" type="figure_eight_ik" output="screen">
+    <node name="exotica_streaming_figure_eight_ik" pkg="stack_of_task_space_controllers_kuka_lwr" type="figure_eight_ik" output="screen">
         <remap from="joint_states" to="/$(arg robot_name)/joint_states" />
         <remap from="command" to="/lwr/ik_command" />
     </node>
@@ -57,7 +57,7 @@
     <node name="gazebo_to_exotica_static_transform" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0 0 0 0 exotica/world_frame world"/>
 
     <!-- RViz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_passive_controllers_controller)/config/rviz.rviz"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find stack_of_task_space_controllers_kuka_lwr)/config/rviz.rviz"/>
 
     <!-- Dynamic Reconfigure -->
     <node type="rqt_reconfigure" pkg="rqt_reconfigure" name="rqt_reconfigure"/>
