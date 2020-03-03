@@ -1,0 +1,3 @@
+<library path="lib/libstack_of_task_space_controllers_rocoma_plugin">
+  <class type="StackOfTaskSpaceControllersRoCo" base_class_type="rocoma_plugin::ControllerPluginInterface<anymal_roco::RocoState, anymal_roco::RocoCommand>" />
+</library>

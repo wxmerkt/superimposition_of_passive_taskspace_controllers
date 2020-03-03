@@ -1,0 +1,53 @@
+!!python/object/new:dynamic_reconfigure.encoding.Config
+dictitems:
+  LF_FOOT/Err0_rot: 0.057
+  LF_FOOT/Err0_trans: 0.01
+  LF_FOOT/Errb_rot: 0.63
+  LF_FOOT/Errb_trans: 0.011
+  LF_FOOT/K0_rot: 0.0
+  LF_FOOT/K0_trans: 100.0
+  LF_FOOT/Wmax_rot: 0.0
+  LF_FOOT/Wmax_scale: 1.0
+  LF_FOOT/Wmax_trans: 1000.0
+  LF_SHANK/Err0_rot: 0.057
+  LF_SHANK/Err0_trans: 0.05
+  LF_SHANK/Errb_rot: 0.63
+  LF_SHANK/Errb_trans: 0.051
+  LF_SHANK/K0_rot: 0.0
+  LF_SHANK/K0_trans: 10000.0
+  LF_SHANK/Wmax_rot: 1.0
+  LF_SHANK/Wmax_scale: 0.0
+  LF_SHANK/Wmax_trans: 10.0
+  groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+    dictitems:
+      LF_FOOT/Err0_rot: 0.057
+      LF_FOOT/Err0_trans: 0.01
+      LF_FOOT/Errb_rot: 0.63
+      LF_FOOT/Errb_trans: 0.011
+      LF_FOOT/K0_rot: 0.0
+      LF_FOOT/K0_trans: 100.0
+      LF_FOOT/Wmax_rot: 0.0
+      LF_FOOT/Wmax_scale: 1.0
+      LF_FOOT/Wmax_trans: 1000.0
+      LF_SHANK/Err0_rot: 0.057
+      LF_SHANK/Err0_trans: 0.05
+      LF_SHANK/Errb_rot: 0.63
+      LF_SHANK/Errb_trans: 0.051
+      LF_SHANK/K0_rot: 0.0
+      LF_SHANK/K0_trans: 10000.0
+      LF_SHANK/Wmax_rot: 1.0
+      LF_SHANK/Wmax_scale: 0.0
+      LF_SHANK/Wmax_trans: 10.0
+      groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      id: 0
+      joint_damping: 0.0
+      name: Default
+      parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      parent: 0
+      state: true
+      type: ''
+    state: []
+  joint_damping: 0.0
+state: []
