@@ -57,6 +57,13 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
     scene_control_loop_ = exotica::Setup::CreateScene(exotica::SceneInitializer());
     scene_subscriber_ = exotica::Setup::CreateScene(exotica::SceneInitializer());
 
+    auto exotica_joint_names = scene_control_loop_->GetControlledJointNames();
+    int count = 0;
+    for (const auto& exotica_joint : exotica_joint_names)
+    {
+        HIGHLIGHT(count++ << ": " << exotica_joint)
+    }
+
     // ddynamic_reconfigure
     ddr_.reset(new ddynamic_reconfigure::DDynamicReconfigure(n));
 
@@ -158,12 +165,14 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
 
         // Add debug publishers
         pub_fic_[link_name] = n.advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/computed_force", 1);
+        pub_error_[link_name] = n.advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/error", 1);
     }
-    ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_tau", 0, "alpha_tau", 0.95, 0, 1));
-    ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_dX", 0, "alpha_dX", 1.0, 0, 1));
-    ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_error", 0, "alpha_error", 1.0, 0, 1));
-    ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_q", 0, "alpha_q", 0.95, 0, 1));
-    ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_qdot", 0, "alpha_qdot", 0.95, 0, 1));
+    // ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_tau", 0, "alpha_tau", 0.95, 0, 1));
+    // ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_dX", 0, "alpha_dX", 1.0, 0, 1));
+    // ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_error", 0, "alpha_error", 1.0, 0, 1));
+    // ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_q", 0, "alpha_q", 0.95, 0, 1));
+    // ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_qdot", 0, "alpha_qdot", 0.95, 0, 1));
+    ddr_->add(new ddynamic_reconfigure::DDDouble("joint_damping", 0, "joint_damping", 0.0, 0, 1));
 
     initialized_ = true;
 
@@ -204,22 +213,30 @@ void StackOfTaskSpaceControllers::UpdateTargetPosesInPassiveControllers(const st
     }
 }
 
-void StackOfTaskSpaceControllers::UpdateCurrentStateFromRobotState()  //(const std::vector<double>& q, const std::vector<double>& qdot)
+void StackOfTaskSpaceControllers::UpdateCurrentState(const Eigen::VectorXd& q, const Eigen::VectorXd& qdot)
 {
     if (!initialized_) ThrowPretty("Not initialized.");
 
-    // if (q.size() != joint_names_.size() || qdot.size() != joint_names_.size())
-    // {
-    //     ThrowPretty("Size mismatch: " << q.size() << " vs " << joint_names_.size());
-    // }
+    if (q.size() != static_cast<Eigen::Index>(joint_names_.size()) || qdot.size() != static_cast<Eigen::Index>(joint_names_.size()))
+    {
+        ThrowPretty("Size mismatch: " << q.size() << " vs " << joint_names_.size());
+    }
 
-    // for (std::size_t i = 0; i < n_joints_; ++i)
-    // {
-    //     robot_current_state_.q(i) = q[i];
-    //     robot_current_state_.qdot(i) = qdot[i];
-    //     // robot_current_state_.tau(i) = joints_[i].getEffort();
-    //     robot_current_state_.q_for_exotica.begin() + .at(i).second = q(i);
-    // }
+    robot_current_state_.q = q;
+    robot_current_state_.qdot = qdot;
+
+    for (std::size_t i = 0; i < n_joints_; ++i)
+    {
+        robot_current_state_.q_for_exotica[joint_names_[i]] = q(i);
+    }
+
+    scene_control_loop_->GetKinematicTree().SetModelState(robot_current_state_.q_for_exotica);
+}
+
+void StackOfTaskSpaceControllers::UpdateCurrentStateFromRobotState()
+{
+    if (!initialized_) ThrowPretty("Not initialized.");
+
     scene_control_loop_->GetKinematicTree().SetModelState(robot_current_state_.q_for_exotica);
 }
 
@@ -264,7 +281,9 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
         msg.data.resize(6);
         for (int i = 0; i < 6; ++i) msg.data[i] = FIC.first(i);
         pub_fic_[passive_controller.link_name].publish(msg);
-        ROS_ERROR_STREAM_THROTTLE(0.5, passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
+        for (int i = 0; i < 6; ++i) msg.data[i] = error(i);
+        pub_error_[passive_controller.link_name].publish(msg);
+        // ROS_ERROR_STREAM(std::fixed << std::setprecision(4) << passive_controller.link_name << ": error=" << error.head<3>().transpose() << ", dX=" << dX.head<3>().transpose() << ", FIC=" << FIC.first.head<3>().transpose());
     }
 
     // Add joint damping
@@ -281,6 +300,7 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
 // ddynamic_reconfigure callback
 void StackOfTaskSpaceControllers::ddrCB(const ddynamic_reconfigure::DDMap& map, int, StackOfTaskSpaceControllers* obj)
 {
+    obj->joint_damping_ = ddynamic_reconfigure::get(map, "joint_damping").toDouble();
     for (auto& passive_controller : obj->passive_controllers_)
     {
         passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
@@ -289,6 +309,7 @@ void StackOfTaskSpaceControllers::ddrCB(const ddynamic_reconfigure::DDMap& map, 
         passive_controller.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
 
         passive_controller.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
+        // TODO: Really important: Errb needs to be bigger than Err0
         passive_controller.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
 
         if (passive_controller.base_for_orientation_control)

@@ -49,7 +49,8 @@ public:
     void UpdateTargetPosesInPassiveControllers(const std::vector<double>& q);
 
     // Method to update the current state of the robot (joint configuration vector)
-    // void UpdateCurrentState(const std::vector<double>& q, const std::vector<double>& qdot);
+    void UpdateCurrentState(const Eigen::VectorXd& q, const Eigen::VectorXd& qdot);
+
     // Requires the state to be updated in robot_current_state_
     void UpdateCurrentStateFromRobotState();
 
@@ -88,6 +89,7 @@ protected:
 
     // Debug publishers
     std::map<std::string, ros::Publisher> pub_fic_;
+    std::map<std::string, ros::Publisher> pub_error_;
 
     // Robot joint state
     RobotState robot_current_state_;
