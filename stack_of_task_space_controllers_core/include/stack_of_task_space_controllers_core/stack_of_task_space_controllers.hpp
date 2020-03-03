@@ -67,6 +67,8 @@ public:
     const std::vector<std::string>& get_joint_names() const { return joint_names_; }
     const std::size_t& get_n_joints() const { return n_joints_; }
 protected:
+    std::string base_frame_ = "";  //!< Frame in which the Cartesian targets are expressed in. Default is world ("").
+
     bool initialized_ = false;
 
     std::vector<std::string> joint_names_;
@@ -105,6 +107,7 @@ protected:
     // double alpha_qdot_ = 1.0;
 
     // Subscriber for new commands (real-time safe)
+    std::string command_topic_ = "command";
     ros::Subscriber sub_command_;
     void commandCB(const std_msgs::Float64MultiArrayConstPtr& msg);
 

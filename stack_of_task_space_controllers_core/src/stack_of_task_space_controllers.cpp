@@ -19,6 +19,26 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
     n_joints_ = joint_names_.size();
     robot_current_state_ = RobotState(joint_names_);
 
+    // Command topic
+    if (!n.getParam("command_topic", command_topic_))
+    {
+        command_topic_ = "command";
+    }
+    else
+    {
+        ROS_INFO_STREAM("Subscribing to commands on topic: " << command_topic_);
+    }
+
+    // Base frame
+    if (!n.getParam("base_frame", base_frame_))
+    {
+        base_frame_ = "";
+    }
+    else
+    {
+        ROS_INFO_STREAM("Expressing passive controllers relative to frame: " << base_frame_);
+    }
+
     // Joint damping (e.g. for simulation)
     if (!n.getParam("joint_damping", joint_damping_))
     {
@@ -156,7 +176,7 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
     UpdateTargetPosesInPassiveControllers(q);
 
     // Subscribe to command topic
-    sub_command_ = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &StackOfTaskSpaceControllers::commandCB, this);
+    sub_command_ = n.subscribe<std_msgs::Float64MultiArray>(command_topic_, 1, &StackOfTaskSpaceControllers::commandCB, this);
 
     // Joint limits
     // joint_limits_interface::JointLimits limits;
@@ -177,7 +197,7 @@ void StackOfTaskSpaceControllers::UpdateTargetPosesInPassiveControllers(const st
     // HIGHLIGHT_NAMED("UpdateTargetPosesInPassiveControllers", q_tmp.transpose())
     for (auto& passive_controller : passive_controllers_)
     {
-        KDL::Frame tmp = scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
+        KDL::Frame tmp = scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame());
         // ROS_INFO_STREAM("Updating " << passive_controller.link_name << " to " << tmp.transpose());
         passive_controller.target_pose.writeFromNonRT(tmp);
         // passive_controller.target_pose = tmp;
@@ -214,8 +234,8 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
         if (passive_controller.orientation_scale == 0.0) continue;
 
         // Get current link positions
-        KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame());
-        Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, "", KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
+        KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame());
+        Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
 
         // Compute error
         KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
@@ -244,7 +264,7 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
         msg.data.resize(6);
         for (int i = 0; i < 6; ++i) msg.data[i] = FIC.first(i);
         pub_fic_[passive_controller.link_name].publish(msg);
-        // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
+        ROS_ERROR_STREAM_THROTTLE(0.5, passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
     }
 
     // Add joint damping
