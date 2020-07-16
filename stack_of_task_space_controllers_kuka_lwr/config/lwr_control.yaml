@@ -25,7 +25,7 @@ position_controller:
 #     - lwr_a6_joint
 
 stack_of_fic:
-  type: stack_of_task_space_controllers_ros_control/StackOfTaskSpaceControllersController
+  type: stack_of_task_space_controllers/StackOfTaskSpaceControllersController
   joints:
     - lwr_a1_joint
     - lwr_a2_joint
