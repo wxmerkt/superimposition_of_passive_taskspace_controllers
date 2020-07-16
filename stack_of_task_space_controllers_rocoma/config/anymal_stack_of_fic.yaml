@@ -1,0 +1,39 @@
+joints:
+  - LF_HAA
+  - LF_HFE
+  - LF_KFE
+  - LH_HAA
+  - LH_HFE
+  - LH_KFE
+  - RF_HAA
+  - RF_HFE
+  - RF_KFE
+  - RH_HAA
+  - RH_HFE
+  - RH_KFE
+command_topic: fic_command
+joint_damping: 0.0
+base_frame: base
+passive_controllers:
+  LF_FOOT:
+    Err0: [0.01, 0.01, 0.01, 0.057, 0.057, 0.057]
+    Errb: [0.011, 0.011, 0.011, 0.58, 0.58, 0.58]
+    Wmax: [0., 0., 0., 0., 0., 0.]
+    K0: [0., 0., 0., 0., 0., 0.]
+  LF_SHANK:
+    Err0: [0.01, 0.01, 0.01, 0.03, 0.03, 0.03]
+    Errb: [0.011, 0.011, 0.011, 0.031, 0.031, 0.031]
+    Wmax: [10., 5., 0., 0., 300., 0.]
+    K0: [0., 0., 0., 0., 0., 0.]
+  RF_FOOT:
+    Mirror: LF_FOOT
+  RF_SHANK:
+    Mirror: LF_SHANK
+  LH_FOOT:
+    Mirror: LF_FOOT
+  LH_SHANK:
+    Mirror: LF_SHANK
+  RH_FOOT:
+    Mirror: LF_FOOT
+  RH_SHANK:
+    Mirror: LF_SHANK

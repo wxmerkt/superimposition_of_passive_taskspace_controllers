@@ -137,6 +137,8 @@ struct PassiveController
     bool base_for_orientation_control = false;
     double orientation_scale = 1.0;
 
+    std::string mirror_ = "";  // Specifies whether to mirror the gains/settings of another controller
+
 private:
     Vector6d F_;
     Vector6d xmax_;

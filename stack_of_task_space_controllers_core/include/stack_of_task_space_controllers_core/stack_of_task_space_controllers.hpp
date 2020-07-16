@@ -49,7 +49,8 @@ public:
     void UpdateTargetPosesInPassiveControllers(const std::vector<double>& q);
 
     // Method to update the current state of the robot (joint configuration vector)
-    // void UpdateCurrentState(const std::vector<double>& q, const std::vector<double>& qdot);
+    void UpdateCurrentState(const Eigen::VectorXd& q, const Eigen::VectorXd& qdot);
+
     // Requires the state to be updated in robot_current_state_
     void UpdateCurrentStateFromRobotState();
 
@@ -67,6 +68,8 @@ public:
     const std::vector<std::string>& get_joint_names() const { return joint_names_; }
     const std::size_t& get_n_joints() const { return n_joints_; }
 protected:
+    std::string base_frame_ = "";  //!< Frame in which the Cartesian targets are expressed in. Default is world ("").
+
     bool initialized_ = false;
 
     std::vector<std::string> joint_names_;
@@ -82,10 +85,11 @@ protected:
     std::shared_ptr<ddynamic_reconfigure::DDynamicReconfigure> ddr_;
 
     // Stack of controllers
-    std::vector<PassiveController> passive_controllers_;
+    std::map<std::string, PassiveController> passive_controllers_;
 
     // Debug publishers
     std::map<std::string, ros::Publisher> pub_fic_;
+    std::map<std::string, ros::Publisher> pub_error_;
 
     // Robot joint state
     RobotState robot_current_state_;
@@ -105,6 +109,7 @@ protected:
     // double alpha_qdot_ = 1.0;
 
     // Subscriber for new commands (real-time safe)
+    std::string command_topic_ = "command";
     ros::Subscriber sub_command_;
     void commandCB(const std_msgs::Float64MultiArrayConstPtr& msg);
 
