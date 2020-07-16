@@ -85,7 +85,7 @@ protected:
     std::shared_ptr<ddynamic_reconfigure::DDynamicReconfigure> ddr_;
 
     // Stack of controllers
-    std::vector<PassiveController> passive_controllers_;
+    std::map<std::string, PassiveController> passive_controllers_;
 
     // Debug publishers
     std::map<std::string, ros::Publisher> pub_fic_;

@@ -123,26 +123,26 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
         bool orientation_control = false;
         n.param<bool>("passive_controllers/" + link_name + "/Orientation", orientation_control, false);
         new_passive_controller.base_for_orientation_control = orientation_control;
-        passive_controllers_.push_back(new_passive_controller);
+        passive_controllers_.insert(std::pair<std::string, PassiveController>(std::string(link_name), new_passive_controller));
 
         // Set up three position controllers if orientation control desired
-        if (orientation_control)
+        /*if (orientation_control)
         {
             PassiveController ctrl_1(link_name + "_rot_1", parsed_values["Wmax"], parsed_values["Errb"], parsed_values["Err0"], parsed_values["K0"]);
             ctrl_1.SetLinkOffset(Eigen::Vector3d(1, 0, 0));
             ctrl_1.link_name = link_name;
-            passive_controllers_.push_back(ctrl_1);
+            passive_controllers_[link_name + "_rot_1"] = ctrl_1;
 
             PassiveController ctrl_2(link_name + "_rot_2", parsed_values["Wmax"], parsed_values["Errb"], parsed_values["Err0"], parsed_values["K0"]);
             ctrl_2.SetLinkOffset(Eigen::Vector3d(0, 1, 0));
             ctrl_2.link_name = link_name;
-            passive_controllers_.push_back(ctrl_2);
+            passive_controllers_[link_name + "_rot_2"] = ctrl_2;
 
             PassiveController ctrl_3(link_name + "_rot_3", parsed_values["Wmax"], parsed_values["Errb"], parsed_values["Err0"], parsed_values["K0"]);
             ctrl_3.SetLinkOffset(Eigen::Vector3d(0, 0, 1));
             ctrl_3.link_name = link_name;
-            passive_controllers_.push_back(ctrl_3);
-        }
+            passive_controllers_[link_name + "_rot_3"] = ctrl_3;
+        }*/
 
         // Add scale parameter to dynamic reconfigure
         // v0.2.0 (pal-robotics)
@@ -151,17 +151,25 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
         // awesomebytes (& ANYbotics)
         if (new_passive_controller.base_for_orientation_control) ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/OrientationScale", 0, link_name + "/OrientationScale (relative to position)", 0.2, 0, 5));
         ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_scale", 0, link_name + "/Wmax_scale (for Wmax and K0)", 1, 0, 100));
-        ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_trans", 0, link_name + "/Wmax_trans", parsed_values["Wmax"](0), 0, 1000));
-        ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 10000));
-        ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_trans", 0, link_name + "/Err0_trans", parsed_values["Err0"](0), 0, 0.2));
-        ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_trans", 0, link_name + "/Errb_trans", parsed_values["Errb"](0), 0, 0.2));
-        if (!orientation_control)
+        // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_trans", 0, link_name + "/Wmax_trans", parsed_values["Wmax"](0), 0, 1000));
+        // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_trans", 0, link_name + "/K0_trans", parsed_values["K0"](0), 0, 10000));
+        // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_trans", 0, link_name + "/Err0_trans", parsed_values["Err0"](0), 0, 0.2));
+        int dim_i = 0;
+        for (auto& dim : {"x", "y", "z", "rot_roll", "rot_pitch", "rot_yaw"})
         {
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 10000));
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
-            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_" + dim, 0, link_name + "/Wmax_" + dim, parsed_values["Wmax"](dim_i), 0, 1000));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_" + dim, 0, link_name + "/K0_" + dim, parsed_values["K0"](dim_i), 0, 10000));
+            ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_" + dim, 0, link_name + "/Err0_" + dim, parsed_values["Err0"](dim_i), 0, 0.2));
+            ++dim_i;
         }
+        // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_trans", 0, link_name + "/Errb_trans", parsed_values["Errb"](0), 0, 0.2));
+        // if (!orientation_control)
+        // {
+        //     ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Wmax_rot", 0, link_name + "/Wmax_rot", parsed_values["Wmax"](3), 0, 100));
+        //     ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/K0_rot", 0, link_name + "/K0_rot", parsed_values["K0"](3), 0, 10000));
+        //     ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Err0_rot", 0, link_name + "/Err0_rot", parsed_values["Err0"](3), 0, 0.2));
+        //     // ddr_->add(new ddynamic_reconfigure::DDDouble(link_name + "/Errb_rot", 0, link_name + "/Errb_rot", parsed_values["Errb"](3), 0, 0.2));
+        // }
 
         // Add debug publishers
         pub_fic_[link_name] = n.advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/computed_force", 1);
@@ -202,14 +210,11 @@ void StackOfTaskSpaceControllers::UpdateTargetPosesInPassiveControllers(const st
     for (std::size_t i = 0; i < n_joints_; ++i)
         q_exotica[joint_names_[i]] = q[i];
     scene_subscriber_->GetKinematicTree().SetModelState(q_exotica);
-    // auto q_tmp = Eigen::Map<const Eigen::VectorXd>(q.data(), q.size());
-    // HIGHLIGHT_NAMED("UpdateTargetPosesInPassiveControllers", q_tmp.transpose())
-    for (auto& passive_controller : passive_controllers_)
+    for (auto it : passive_controllers_)
     {
+        auto& passive_controller = it.second;
         KDL::Frame tmp = scene_subscriber_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame());
-        // ROS_INFO_STREAM("Updating " << passive_controller.link_name << " to " << tmp.transpose());
         passive_controller.target_pose.writeFromNonRT(tmp);
-        // passive_controller.target_pose = tmp;
     }
 }
 
@@ -245,14 +250,22 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
     if (!initialized_) ThrowPretty("Not initialized.");
 
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(n_joints_);
-    for (auto& passive_controller : passive_controllers_)
+    for (auto it : passive_controllers_)
     {
+        auto& passive_controller = it.second;
         // Skip orientation controllers if they are deactivated.
         if (passive_controller.orientation_scale == 0.0) continue;
 
         // Get current link positions
         KDL::Frame current_link_position = scene_control_loop_->GetKinematicTree().FK(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame());
-        Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame()).block(0, 0, 6, n_joints_);  // NASTY SUBSET SELECTION!!!!
+        Eigen::MatrixXd current_link_jacobian = scene_control_loop_->GetKinematicTree().Jacobian(passive_controller.link_name, passive_controller.link_offset_frame, base_frame_, KDL::Frame());
+        // HIGHLIGHT("current_link_jacobian=" << current_link_jacobian.rows() << "x" << current_link_jacobian.cols());
+        // HIGHLIGHT_NAMED(passive_controller.link_name, "\n" << current_link_jacobian)
+        // Figure out chain from base_frame_ to the current frame
+        // auto chain = scene_control_loop_->GetKinematicTree().GetKinematicChain(base_frame_, passive_controller.link_name);
+        // int i = 0;
+        // for (const auto& link : chain)
+        //     HIGHLIGHT_NAMED(passive_controller.link_name, i++ << ": " << link)
 
         // Compute error
         KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
@@ -301,46 +314,58 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
 void StackOfTaskSpaceControllers::ddrCB(const ddynamic_reconfigure::DDMap& map, int, StackOfTaskSpaceControllers* obj)
 {
     obj->joint_damping_ = ddynamic_reconfigure::get(map, "joint_damping").toDouble();
-    for (auto& passive_controller : obj->passive_controllers_)
+    for (auto it : obj->passive_controllers_)
     {
+        auto& passive_controller = it.second;
         passive_controller.Wmax_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
 
-        passive_controller.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
-        passive_controller.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
-
-        passive_controller.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
-        // TODO: Really important: Errb needs to be bigger than Err0
-        passive_controller.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
-
-        if (passive_controller.base_for_orientation_control)
+        int dim_i = 0;
+        for (auto& dim : {"x", "y", "z", "rot_roll", "rot_pitch", "rot_yaw"})
         {
-            passive_controller.orientation_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/OrientationScale").c_str()).toDouble();
+            passive_controller.Wmax_init_(dim_i) = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_" + dim).c_str()).toDouble();
+            passive_controller.K0_init_(dim_i) = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_" + dim).c_str()).toDouble();
 
-            for (auto suffix : {"_rot_1", "_rot_2", "_rot_3"})
-            {
-                for (auto& pc : obj->passive_controllers_)
-                {
-                    if (pc.controller_name == passive_controller.link_name + suffix)
-                    {
-                        pc.Wmax_scale = passive_controller.orientation_scale * ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
-                        pc.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
-                        // pc.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
-                        pc.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
-                        // pc.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
+            passive_controller.Err0(dim_i) = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_" + dim).c_str()).toDouble();
+            passive_controller.Errb(dim_i) = 1.01 * passive_controller.Err0(dim_i);
+            dim_i++;
+        }
 
-                        pc.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
-                        pc.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
-                    }
-                }
-            }
-        }
-        else
-        {
-            passive_controller.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
-            passive_controller.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
-            passive_controller.Err0.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_rot").c_str()).toDouble());
-            passive_controller.Errb.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_rot").c_str()).toDouble());
-        }
+        // passive_controller.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
+        // passive_controller.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
+
+        // passive_controller.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
+        // // TODO: Really important: Errb needs to be bigger than Err0
+        // passive_controller.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
+
+        // if (passive_controller.base_for_orientation_control)
+        // {
+        //     passive_controller.orientation_scale = ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/OrientationScale").c_str()).toDouble();
+
+        //     for (auto suffix : {"_rot_1", "_rot_2", "_rot_3"})
+        //     {
+        //         for (auto& pc : obj->passive_controllers_)
+        //         {
+        //             if (pc.controller_name == passive_controller.link_name + suffix)
+        //             {
+        //                 pc.Wmax_scale = passive_controller.orientation_scale * ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_scale").c_str()).toDouble();
+        //                 pc.Wmax_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_trans").c_str()).toDouble());
+        //                 // pc.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
+        //                 pc.K0_init_.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_trans").c_str()).toDouble());
+        //                 // pc.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
+
+        //                 pc.Err0.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_trans").c_str()).toDouble());
+        //                 pc.Errb.head<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_trans").c_str()).toDouble());
+        //             }
+        //         }
+        //     }
+        // }
+        // else
+        // {
+        //     passive_controller.Wmax_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Wmax_rot").c_str()).toDouble());
+        //     passive_controller.K0_init_.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/K0_rot").c_str()).toDouble());
+        //     passive_controller.Err0.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Err0_rot").c_str()).toDouble());
+        //     passive_controller.Errb.tail<3>().setConstant(ddynamic_reconfigure::get(map, std::string(passive_controller.link_name + "/Errb_rot").c_str()).toDouble());
+        // }
     }
 }
 
