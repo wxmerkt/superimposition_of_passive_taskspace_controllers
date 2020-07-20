@@ -31,12 +31,14 @@ class Example(object):
                                                  description='Link 4',
                                                  marker_shape=Marker.SPHERE,
                                                  marker_size=[0.2, 0.2, 0.2],
+                                                 marker_color=[0., 0., 1., 0.5],
                                                  controls_rotate=False)
         self.link_7_target_marker = TargetMarker(pose=self.lwr_7_link_exo_frame.get_translation(),
                                                  server_name='/lwr_7_link/target_marker',
                                                  description='Link 7',
                                                  marker_shape=Marker.SPHERE,
                                                  marker_size=[0.2, 0.2, 0.2],
+                                                 marker_color=[1., 0., 0., 0.5],
                                                  controls_rotate=False)
         
         self.link_4_cartesian_target_pub = rospy.Publisher('/lwr/stack_of_fic/lwr_4_link/cartesian_target', Point, queue_size=1)
