@@ -1,9 +1,11 @@
 <?xml version="1.0" ?>
 <IKSolverDemoConfig>
-  <!-- <IKSolver Name="MySolver">
+  <IKSolver Name="MySolver">
+    <RegularizationRate>1e-3</RegularizationRate>
     <MaxIterations>1</MaxIterations>
-  </IKSolver> -->
-  <BayesianIKSolver Name="MySolver"/>
+    <MaxStep>0.1</MaxStep>
+  </IKSolver>
+  <!-- <BayesianIKSolver Name="MySolver"/> -->
 
   <UnconstrainedEndPoseProblem Name="MyProblem">
 
@@ -40,9 +42,6 @@
       <!-- <Task Task="AxisAlignment" Rho="1e3"/> -->
     </Cost>
 
-    <!-- <StartState>0 0 0 0 0 0 0</StartState> -->
-    <!-- <NominalState>0 0 1.57 0 0 0 0</NominalState> -->
-    <!-- <W>7 6 5 4 3 2 1</W> -->
+    <W>7 6 5 4 3 2 1</W>
   </UnconstrainedEndPoseProblem>
-
 </IKSolverDemoConfig>

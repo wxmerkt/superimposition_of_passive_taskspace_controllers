@@ -3,6 +3,7 @@
 import pyexotica as exo
 import numpy as np
 import math
+import exotica_core_task_maps_py
 from pyexotica.publish_trajectory import *
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import JointState
@@ -64,7 +65,9 @@ else:
     problem.set_goal('Position', target)
 solver.max_iterations = 100
 q = solver.solve()[0]
-solver.max_iterations = 5
+solver.max_iterations = 1
+
+problem.get_task_maps()["Identity"].joint_ref = q
 
 # if not constrained_ik:
 #     print(q)
