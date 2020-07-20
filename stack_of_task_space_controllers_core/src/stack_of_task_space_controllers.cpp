@@ -101,6 +101,7 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
         // Set up three position controllers if orientation control desired
         if (orientation_control)
         {
+            ThrowPretty("No!");
             PassiveController ctrl_1(link_name + "_rot_1", parsed_values["Wmax"], parsed_values["Errb"], parsed_values["Err0"], parsed_values["K0"]);
             ctrl_1.SetLinkOffset(Eigen::Vector3d(1, 0, 0));
             ctrl_1.link_name = link_name;
@@ -137,7 +138,7 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
         }
 
         // Add debug publishers
-        pub_fic_[link_name] = n.advertise<std_msgs::Float64MultiArray>("/stack_of_fic/" + link_name + "/computed_force", 1);
+        pub_fic_[link_name] = n.advertise<std_msgs::Float64MultiArray>(link_name + "/computed_force", 1);
     }
     ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_tau", 0, "alpha_tau", 0.95, 0, 1));
     ddr_->add(new ddynamic_reconfigure::DDDouble("alpha_dX", 0, "alpha_dX", 1.0, 0, 1));
@@ -157,6 +158,15 @@ void StackOfTaskSpaceControllers::Initialize(ros::NodeHandle& n)
 
     // Subscribe to command topic
     sub_command_ = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &StackOfTaskSpaceControllers::commandCB, this);
+
+    // Subscribe to Cartesian command targets
+    sub_cartesian_commands_.reserve(passive_controllers_.size());
+    for (const auto& passive_controller : passive_controllers_)
+    {
+        // sub_cartesian_commands_.emplace_back(n.subscribe<geometry_msgs::Point>(passive_controller.link_name + "/cartesian_target", 1, &StackOfTaskSpaceControllers::cartesian_commandCB, this));
+        const std::string topic_name = passive_controller.link_name + "/cartesian_target";
+        sub_cartesian_commands_.emplace_back(n.subscribe<geometry_msgs::Point>(topic_name, 1, boost::bind(&StackOfTaskSpaceControllers::cartesian_commandCB, this, _1, topic_name)));
+    }
 
     // Joint limits
     // joint_limits_interface::JointLimits limits;
@@ -239,11 +249,21 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
         passive_controller.tmp_Xmax = FIC.second;
 
         // Map back to joint space
-        tau += current_link_jacobian.transpose() * FIC.first;
+
+        tau.noalias() += current_link_jacobian.transpose() * FIC.first;
         std_msgs::Float64MultiArray msg;
         msg.data.resize(6);
         for (int i = 0; i < 6; ++i) msg.data[i] = FIC.first(i);
         pub_fic_[passive_controller.link_name].publish(msg);
+        if (control_tick_ % 500 == 0)
+        {
+            const Eigen::VectorXd tau_this_level = current_link_jacobian.transpose() * FIC.first;
+            HIGHLIGHT_NAMED(passive_controller.link_name, std::setw(8) << std::fixed << std::setprecision(4)
+                                                                       << " Goal:" << Eigen::Map<Eigen::Vector3d>(target_pose.p.data).transpose()
+                                                                       << "\tError=" << error.head<3>().transpose()
+                                                                       << "\tFIC=" << FIC.first.head<3>().transpose()
+                                                                       << "\ttau=" << tau_this_level.transpose());
+        }
         // ROS_ERROR_STREAM(passive_controller.link_name << ": error=" << error.transpose() << ", dX=" << dX.transpose() << ", FIC=" << FIC.first.transpose());
     }
 
@@ -255,6 +275,9 @@ Eigen::VectorXd StackOfTaskSpaceControllers::ComputeCommandTorques()
     {
         tau_command(i) = clamp(tau(i), -joint_urdfs_[i]->limits->effort, joint_urdfs_[i]->limits->effort);
     }
+
+    control_tick_++;
+
     return tau_command;
 }
 
@@ -308,11 +331,34 @@ void StackOfTaskSpaceControllers::commandCB(const std_msgs::Float64MultiArrayCon
     // Positions
     if (msg->data.size() == n_joints_)
     {
+        // ROS_DEBUG_STREAM_THROTTLE_NAMED(1., "Pose Optimization Update", "New joint angles received.");
         UpdateTargetPosesInPassiveControllers(msg->data);
     }
     else
     {
         ROS_ERROR_STREAM("Number of desired positions wrong: got " << msg->data.size() << " expected " << n_joints_ << " or 0.");
     }
+}
+
+// Cartesian command
+void StackOfTaskSpaceControllers::cartesian_commandCB(const geometry_msgs::PointConstPtr& msg, const std::string& topic)
+{
+    std::string controller_name(topic);
+    const std::string string_to_erase = "/cartesian_target";
+    controller_name.erase(topic.length() - string_to_erase.length(), string_to_erase.length());
+
+    // ROS_INFO_STREAM("Received new cartesian command on topic = " << topic << ", controller = " << controller_name);
+    for (auto& passive_controller : passive_controllers_)
+    {
+        if (passive_controller.link_name == controller_name)
+        {
+            // KDL::Frame target_pose = *passive_controller.target_pose.readFromRT();
+            // ROS_INFO_STREAM("Updating " << controller_name << " to x=" << msg->x << ", y=" << msg->y << ", z=" << msg->z << " (from: " << Eigen::Map<Eigen::Vector3d>(target_pose.p.data).transpose() << ")");
+            KDL::Frame tmp(KDL::Vector(msg->x, msg->y, msg->z));
+            passive_controller.target_pose.writeFromNonRT(tmp);
+            return;
+        }
+    }
+    ROS_ERROR_STREAM("No corresponding controller found for " << controller_name);
 }
 }  // namespace stack_of_task_space_controllers

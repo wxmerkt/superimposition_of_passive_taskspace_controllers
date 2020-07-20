@@ -8,6 +8,7 @@
 
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <ddynamic_reconfigure/param/dd_all_params.h>
+#include <geometry_msgs/Point.h>
 #include <realtime_tools/realtime_buffer.h>
 // #include <realtime_tools/realtime_publisher.h>
 #include <ros/node_handle.h>
@@ -68,6 +69,7 @@ public:
     const std::size_t& get_n_joints() const { return n_joints_; }
 protected:
     bool initialized_ = false;
+    unsigned long long int control_tick_ = 0;  // Should give us a couple thousand years before buffer overflow.
 
     std::vector<std::string> joint_names_;
     std::size_t n_joints_;
@@ -107,6 +109,8 @@ protected:
     // Subscriber for new commands (real-time safe)
     ros::Subscriber sub_command_;
     void commandCB(const std_msgs::Float64MultiArrayConstPtr& msg);
+    std::vector<ros::Subscriber> sub_cartesian_commands_;
+    void cartesian_commandCB(const geometry_msgs::PointConstPtr& msg, const std::string& topic);
 
     // Reconfigure callback
     static void ddrCB(const ddynamic_reconfigure::DDMap& map, int, StackOfTaskSpaceControllers* obj);
