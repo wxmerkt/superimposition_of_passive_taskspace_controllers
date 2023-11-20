@@ -1,0 +1,8 @@
+- git:
+    uri: https://github.com/ipab-slmc/ipab_lwr_msgs.git
+    version: master
+    local-name: ipab_lwr_msgs
+- git:
+    uri: https://github.com/awesomebytes/ddynamic_reconfigure.git
+    version: dubnium-devel
+    local-name: ddynamic_reconfigure

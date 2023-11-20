@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 project(stack_of_task_space_controllers_ros_control)
 
 set(CATKIN_DEPENDENCIES
@@ -30,7 +30,7 @@ add_library(${PROJECT_NAME} src/stack_of_task_space_controllers_ros_control.cpp)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
-target_compile_options(${PROJECT_NAME} PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
+target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wno-unknown-pragmas)
 
 #############
 ## Install ##

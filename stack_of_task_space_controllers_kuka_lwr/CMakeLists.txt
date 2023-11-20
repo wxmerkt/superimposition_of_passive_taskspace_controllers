@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 project(stack_of_task_space_controllers_kuka_lwr)
 
 set(CATKIN_DEPENDENCIES
@@ -25,7 +25,7 @@ add_executable(stack_of_fic_node src/stack_of_fic_node.cpp)
 add_dependencies(stack_of_fic_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(stack_of_fic_node ${catkin_LIBRARIES})
 target_include_directories(stack_of_fic_node PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
-target_compile_options(stack_of_fic_node PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
+target_compile_options(stack_of_fic_node PUBLIC -Wall -Wno-unknown-pragmas)
 
 #############
 ## Install ##
