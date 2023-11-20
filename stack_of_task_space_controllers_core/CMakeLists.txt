@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 project(stack_of_task_space_controllers_core)
 
 set(CATKIN_DEPENDENCIES
@@ -22,16 +22,15 @@ catkin_package(
 
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 
-include_directories(include)
-
 ###########
 ## Build ##
 ###########
 add_library(${PROJECT_NAME} src/stack_of_task_space_controllers.cpp)
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${catkin_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
-target_compile_options(${PROJECT_NAME} PUBLIC -std=c++14 -Wall -Wno-unknown-pragmas)
+target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wno-unknown-pragmas)
 
 #############
 ## Install ##
@@ -41,6 +40,6 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-install(DIRECTORY include/${PROJECT_NAME}
+install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )

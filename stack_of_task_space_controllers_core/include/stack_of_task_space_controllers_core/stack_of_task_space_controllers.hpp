@@ -67,6 +67,7 @@ public:
 
     const std::vector<std::string>& get_joint_names() const { return joint_names_; }
     const std::size_t& get_n_joints() const { return n_joints_; }
+
 protected:
     bool initialized_ = false;
     unsigned long long int control_tick_ = 0;  // Should give us a couple thousand years before buffer overflow.
